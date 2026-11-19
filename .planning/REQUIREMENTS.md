@@ -35,10 +35,10 @@
 
 ### Messaging Infrastructure
 
-- [ ] **MSG-01**: RabbitMQ topology declares topic exchange, main queue, retry queue (5s TTL), and DLQ with proper dead-letter routing
-- [ ] **MSG-02**: Consumer base implements hand-built retry (max 3 attempts) using `x-retry-count` header
-- [ ] **MSG-03**: Messages exceeding retry limit are routed to DLQ with `x-exception` header
-- [ ] **MSG-04**: Publisher uses publisher confirms for reliable delivery
+- [x] **MSG-01**: RabbitMQ topology declares topic exchange, main queue, retry queue (5s TTL), and DLQ with proper dead-letter routing
+- [x] **MSG-02**: Consumer base implements hand-built retry (max 3 attempts) using `x-retry-count` header
+- [x] **MSG-03**: Messages exceeding retry limit are routed to DLQ with `x-exception` header
+- [x] **MSG-04**: Publisher uses publisher confirms for reliable delivery
 
 ### Platform
 
@@ -81,10 +81,10 @@
 | TRK-03 | Phase 4 | Pending |
 | TRK-04 | Phase 4 | Pending |
 | TRK-05 | Phase 4 | Pending |
-| MSG-01 | Phase 2 | Pending |
-| MSG-02 | Phase 2 | Pending |
-| MSG-03 | Phase 2 | Pending |
-| MSG-04 | Phase 2 | Pending |
+| MSG-01 | Phase 2 | Complete |
+| MSG-02 | Phase 2 | Complete |
+| MSG-03 | Phase 2 | Complete |
+| MSG-04 | Phase 2 | Complete |
 | PLAT-01 | Phase 6 | Pending |
 | PLAT-02 | Phase 6 | Pending |
 | PLAT-03 | Phase 6 | Pending |

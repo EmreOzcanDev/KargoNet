@@ -27,23 +27,23 @@ last_activity_desc: STATE.md frontmatter restored
 - **Roadmap**: See [ROADMAP.md](./ROADMAP.md) for phase structure and success criteria.
 
 **Core value:** Reliable shipment status propagation: a status change made in the operator UI must reach the customer portal and the operator's live view without loss, even when RabbitMQ or individual consumers are temporarily down.
-**Current focus:** Phase 2 — Contracts & Messaging
+**Current focus:** Phase 3 — Shipment API
 
 ## Current Position
 Current Plan: 3
 Total Plans in Phase: TBD
 
 
-- **Phase**: 2 (Contracts & Messaging)
+- **Phase**: 3 (Shipment API)
 - **Status**: Ready to plan
-- **Last Activity**: 2026-11-20 — Phase 1 complete (verification 4/4 passed), transitioned to Phase 2
+- **Last Activity**: 2026-11-20 — Phase 2 complete (verification 4/4 passed), transitioned to Phase 3
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases completed | 1/6 |
-| Requirements validated | 0/25 |
+| Phases completed | 2/6 |
+| Requirements validated | 4/25 |
 **Per-Plan Metrics:**
 
 | Plan | Duration | Tasks | Files |
@@ -51,6 +51,10 @@ Total Plans in Phase: TBD
 | Phase 1 P01 | 13m | 2 tasks | 7 files |
 | Phase 1 P02 | 12m | 2 tasks | 23 files |
 | Phase 1 P03 | 11m | 2 tasks | 12 files |
+| Phase 2 P01 | 25m | 2 tasks | 5 files |
+| Phase 2 P02 | 25m | 2 tasks | 5 files |
+| Phase 2 P03 | 35m | 2 tasks | 8 files |
+| Phase 2 P04 | 35m | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -59,6 +63,11 @@ Total Plans in Phase: TBD
 - [Phase 1]: GET /health serializes ShipmentStatus via Enum.GetNames to expose the seven lifecycle names, proving the Contracts ProjectReference is live
 - [Phase 1]: @angular/cli verified legitimate (official Angular org) — T-01-SC human gate cleared 2026-11-19; operator-ui scaffolded --ssr false as client-side SPA
 - [Phase 1]: KargoNet.Messaging left empty (consumer base/retry/DLQ are Phase 2 scope); reference graph Tracking.Api->Contracts+Messaging, Portal.Web->Contracts
+- [Phase 2]: EventEnvelope { EventId, EventType, OccurredAt, JsonElement? Payload } with camelCase System.Text.Json EventSerializer; payload records ShipmentCreatedPayload / ShipmentStatusChangedPayload
+- [Phase 2]: Topic exchange kargonet.shipments; shipments.main<-shipment, shipments.retry<-shipment.retry (x-message-ttl=5000, dead-letter back to shipment), shipments.dlq<-shipment.dead
+- [Phase 2]: 3-attempt semantics — attempt 1 = first delivery; republish attempts 1&2 with incremented x-retry-count + x-exception; >=3 -> DLQ with x-exception; always ack, never requeue
+- [Phase 2]: RabbitMQ.Client pinned 7.2.2 (AGENTS.md pins 7.x; 7.x confirm API: seq no + BasicPublishAsync + BasicAcksAsync)
+- [Phase 2]: IOutboxChannel seam + pure RetryPolicy.Decide make publish/retry unit-testable broker-free; live broker behavior deferred to Phase 6
 
 ### Todos
 - (none yet)
@@ -69,9 +78,9 @@ Total Plans in Phase: TBD
 
 ## Session Continuity
 
-Last session: 2026-11-20T20:55:00Z
+Last session: 2026-11-20T23:00:00Z
 Stopped at: Completed 01-03-PLAN.md
 Resume file: None
 
 ---
-*Last updated: 2026-11-20 after Phase 1*
+*Last updated: 2026-11-20 after Phase 2*

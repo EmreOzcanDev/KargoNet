@@ -40,7 +40,13 @@ Plans:
   2. Publisher sends a message with publisher confirms and receives broker acknowledgment
   3. A failing consumer republishes to the retry queue with incremented x-retry-count header (attempts below 3)
   4. A message exceeding 3 retry attempts is routed to the DLQ with x-exception header
-**Plans**: TBD
+**Plans:** 4/4 plans complete
+
+Plans:
+- [x] 02-01-PLAN.md — Event contracts: envelope, payload records, camelCase serialization (MSG-02/03/04)
+- [x] 02-02-PLAN.md — RabbitMQ topology: exchange, main/retry/DLQ queues, dead-letter args (MSG-01)
+- [x] 02-03-PLAN.md — Publisher with publisher confirms + testable seam (MSG-04)
+- [x] 02-04-PLAN.md — Consumer base: hand-built retry (3 attempts) + DLQ routing (MSG-02/03)
 
 ### Phase 3: Shipment API
 **Goal**: Shipments can be created, listed, and status-updated via REST, with events reliably published through the outbox pattern.
