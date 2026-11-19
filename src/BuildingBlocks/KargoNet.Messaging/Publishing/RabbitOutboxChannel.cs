@@ -35,8 +35,9 @@ public sealed class RabbitOutboxChannel : IOutboxChannel
 
         AsyncEventHandler<BasicAckEventArgs> onAcks = (object sender, BasicAckEventArgs e) =>
         {
-            // Multiple acks cover all tags up to e.DeliveryTag.
-            if (e.Multiple || e.DeliveryTag >= (ulong)publishId)
+            // Both single and multiple acks cover all tags up to e.DeliveryTag;
+            // a frame only confirms this publish when its tag is >= ours.
+            if (e.DeliveryTag >= (ulong)publishId)
                 acked.TrySetResult(true);
             return Task.CompletedTask;
         };
