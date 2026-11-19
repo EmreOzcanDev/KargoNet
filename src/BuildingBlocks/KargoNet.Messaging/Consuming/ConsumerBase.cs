@@ -39,7 +39,7 @@ public abstract class ConsumerBase<TPayload>
         catch (Exception exception)
         {
             var retryCount = headers is not null && headers.TryGetValue(RetryCountHeader, out var raw)
-                ? Convert.ToInt32(raw)
+                ? ParseRetryCount(raw)
                 : 0;
 
             var newHeaders = headers is null
@@ -71,4 +71,18 @@ public abstract class ConsumerBase<TPayload>
         // Always ack: redelivery is owned by the retry TTL + dead-lettering, not by nacks.
         await _broker.AckAsync(deliveryTag).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Defensively parses the untrusted <c>x-retry-count</c> header: accepts
+    /// <see cref="int"/> and in-range <see cref="long"/> values (the two shapes
+    /// RabbitMQ delivers headers as); anything else is treated as the first
+    /// attempt (0) rather than throwing.
+    /// </summary>
+    private static int ParseRetryCount(object? raw)
+        => raw switch
+        {
+            int count => count,
+            long count when count is >= int.MinValue and <= int.MaxValue => (int)count,
+            _ => 0,
+        };
 }

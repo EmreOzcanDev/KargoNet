@@ -129,4 +129,20 @@ public class ConsumerBaseTests
         Assert.Equal(corrupt, publish.Body);
         Assert.Equal([51UL], broker.Acks);
     }
+
+    [Fact]
+    public async Task UnparseableRetryCountHeader_TreatedAsFirstAttempt()
+    {
+        var broker = new RecordingBroker();
+        var consumer = new TrackingConsumer(broker, _ => throw new InvalidOperationException("handler exploded"));
+        var headers = new Dictionary<string, object?> { ["x-retry-count"] = "not-a-number" };
+        var body = Body(Envelope());
+
+        await consumer.HandleDeliveryAsync(61, body, headers);
+
+        var publish = Assert.Single(broker.Publishes);
+        Assert.Equal(RabbitTopology.RetryRoutingKey, publish.RoutingKey);
+        Assert.Equal(1, publish.Headers!["x-retry-count"]);
+        Assert.Equal([61UL], broker.Acks);
+    }
 }
