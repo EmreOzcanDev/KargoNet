@@ -13,9 +13,17 @@ public class ConsumerBaseTests
     {
         public List<ulong> Acks { get; } = [];
 
+
         public record Publish(string Exchange, string RoutingKey, byte[] Body, IDictionary<string, object?>? Headers);
 
+
         public List<Publish> Publishes { get; } = [];
+
+        public Exception? PublishFailure;
+
+
+
+
 
         public Task AckAsync(ulong deliveryTag)
         {
@@ -25,6 +33,9 @@ public class ConsumerBaseTests
 
         public Task PublishAsync(string exchange, string routingKey, ReadOnlyMemory<byte> body, IDictionary<string, object?>? headers)
         {
+            if (PublishFailure is not null)
+                throw PublishFailure;
+
             Publishes.Add(new Publish(exchange, routingKey, body.ToArray(), headers));
             return Task.CompletedTask;
         }
@@ -144,5 +155,20 @@ public class ConsumerBaseTests
         Assert.Equal(RabbitTopology.RetryRoutingKey, publish.RoutingKey);
         Assert.Equal(1, publish.Headers!["x-retry-count"]);
         Assert.Equal([61UL], broker.Acks);
+    }
+
+    [Fact]
+    public async Task RepublishFailure_OriginalStillAcksAndNoThrow()
+    {
+        var broker = new RecordingBroker
+        {
+            PublishFailure = new InvalidOperationException("broker down"),
+        };
+        var consumer = new TrackingConsumer(broker, _ => throw new InvalidOperationException("handler exploded"));
+        var body = Body(Envelope());
+
+        await consumer.HandleDeliveryAsync(71, body, null);
+
+        Assert.Equal([71UL], broker.Acks);
     }
 }

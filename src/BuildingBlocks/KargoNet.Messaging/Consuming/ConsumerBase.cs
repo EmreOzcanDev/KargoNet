@@ -65,7 +65,18 @@ public abstract class ConsumerBase<TPayload>
                     throw new InvalidOperationException($"Unexpected retry decision: {decision.GetType().Name}");
             }
 
-            await _broker.PublishAsync(RabbitTopology.Exchange, routingKey, body, newHeaders).ConfigureAwait(false);
+            // The republish is best-effort: if it fails, the original delivery
+            // is still acked below (the locked "every failure path ends in ack"
+            // invariant). No requeue — a broker that cannot take the republish
+            // cannot take the original redelivery either.
+            try
+            {
+                await _broker.PublishAsync(RabbitTopology.Exchange, routingKey, body, newHeaders).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Deliberately swallowed; the ack below must run on every path.
+            }
         }
 
         // Always ack: redelivery is owned by the retry TTL + dead-lettering, not by nacks.
