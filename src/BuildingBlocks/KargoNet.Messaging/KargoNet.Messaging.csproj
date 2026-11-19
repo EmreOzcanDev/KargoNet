@@ -10,4 +10,8 @@
     <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\KargoNet.Contracts\KargoNet.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>
