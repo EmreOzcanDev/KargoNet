@@ -6,7 +6,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Foundation & Scaffold** - Toolchain installed, solution structured, all projects created
+- [x] **Phase 1: Foundation & Scaffold** - Toolchain installed, solution structured, all projects created (completed 2026-11-19)
 - [ ] **Phase 2: Contracts & Messaging** - Event contracts, RabbitMQ topology, publisher with confirms, retry/DLQ consumer base
 - [ ] **Phase 3: Shipment API** - REST endpoints for shipments with EF Core, outbox pattern, and background publisher
 - [ ] **Phase 4: Tracking API** - Event consumer with idempotency, Redis cache-aside, SignalR hub, DLQ admin
@@ -24,7 +24,7 @@
   2. Solution layout matches plan: src/BuildingBlocks, src/Services, src/Web, tests directories exist with their projects
   3. Angular app is scaffolded via npx and `ng build` succeeds
   4. .gitignore excludes bin/, obj/, node_modules/, .angular/
-**Plans:** 3/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md — .NET 10 SDK + solution tracer (sln, Contracts, Shipment.Api /health, .gitignore)
@@ -93,7 +93,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Scaffold | 3/3 | In Progress | - |
+| 1. Foundation & Scaffold | 3/3 | Complete    | 2026-11-19 |
 | 2. Contracts & Messaging | 0/? | Not started | - |
 | 3. Shipment API | 0/? | Not started | - |
 | 4. Tracking API | 0/? | Not started | - |
