@@ -26,20 +26,23 @@ last_activity_desc: STATE.md frontmatter restored
 - **Context**: See [PROJECT.md](./PROJECT.md) for goals, requirements, and constraints.
 - **Roadmap**: See [ROADMAP.md](./ROADMAP.md) for phase structure and success criteria.
 
+**Core value:** Reliable shipment status propagation: a status change made in the operator UI must reach the customer portal and the operator's live view without loss, even when RabbitMQ or individual consumers are temporarily down.
+**Current focus:** Phase 2 — Contracts & Messaging
+
 ## Current Position
 Current Plan: 3
-Total Plans in Phase: 3
+Total Plans in Phase: TBD
 
 
-- **Phase**: 1 (Foundation & Scaffold)
-- **Status**: Not started
-- **Last Activity**: 2026-11-19 — STATE.md frontmatter restored
+- **Phase**: 2 (Contracts & Messaging)
+- **Status**: Ready to plan
+- **Last Activity**: 2026-11-20 — Phase 1 complete (verification 4/4 passed), transitioned to Phase 2
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases completed | 0/6 |
+| Phases completed | 1/6 |
 | Requirements validated | 0/25 |
 **Per-Plan Metrics:**
 
@@ -62,13 +65,13 @@ Total Plans in Phase: 3
 
 ### Blockers
 
-None yet.
+- ⚠️ [Phase 6] Docker/Docker Compose not installed; daemon install requires root — user granted full install authority, attempt install in Phase 6
 
 ## Session Continuity
 
-Last session: 2026-11-19T18:43:00.426Z
+Last session: 2026-11-20T20:55:00Z
 Stopped at: Completed 01-03-PLAN.md
 Resume file: None
 
 ---
-*Last updated: 2026-11-19 after roadmap creation*
+*Last updated: 2026-11-20 after Phase 1*

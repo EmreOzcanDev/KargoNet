@@ -12,12 +12,11 @@ Reliable shipment status propagation: a status change made in the operator UI mu
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Solution scaffold: KargoNet.sln, all projects, Angular app, .gitignore — Phase 1
 
 ### Active
 
-- [ ] Toolchain bootstrap: .NET 10 SDK and Docker installed and working
-- [ ] Solution scaffold: KargoNet.sln, Directory.Build.props, all projects, Angular app, .gitignore
+- [ ] Toolchain bootstrap: Docker installed and working (.NET 10 SDK validated Phase 1)
 - [ ] Contracts: ShipmentCreated, ShipmentStatusChanged event records, ShipmentStatus enum, event envelope
 - [ ] Messaging: RabbitMQ topology (exchange, queues, retry/DLQ), publisher with confirms, consumer base with retry and dead-letter logic
 - [ ] Shipment.Api: EF Core model (Shipments, OutboxMessages), migrations, REST endpoints (POST/GET/PUT), outbox publisher background service
@@ -62,6 +61,8 @@ Reliable shipment status propagation: a status change made in the operator UI mu
 | SignalR for operator live updates | Real-time push to Angular without polling; broadcasts to all operators + per-tracking-number groups | — Pending |
 | No authentication | Plan explicitly excludes auth; customers track by number, operator screen is open | — Pending |
 | Docker Compose for all infrastructure | Single-command local dev; healthchecks gate service startup ordering | — Pending |
+| Classic .sln (not .slnx) | .NET 10 defaults to .slnx; plan/ROADMAP pin KargoNet.sln | ✓ Phase 1 |
+| Client-side Angular SPA (--ssr false) | Operator screen is a live-updating dashboard; SSR buys nothing, keeps Dockerfile simple | ✓ Phase 1 |
 
 ## Evolution
 
@@ -81,4 +82,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-19 after initialization*
+*Last updated: 2026-11-20 after Phase 1*
