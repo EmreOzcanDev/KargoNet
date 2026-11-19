@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BuildingBlocks\KargoNet.Contracts\KargoNet.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\KargoNet.Messaging\KargoNet.Messaging.csproj" />
   </ItemGroup>
 
 </Project>
