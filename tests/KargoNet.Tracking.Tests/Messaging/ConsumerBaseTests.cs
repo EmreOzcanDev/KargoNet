@@ -112,4 +112,21 @@ public class ConsumerBaseTests
         Assert.Equal("handler exploded", publish.Headers!["x-exception"]);
         Assert.Equal([41UL], broker.Acks);
     }
+
+
+    [Fact]
+    public async Task MalformedBody_RoutesToDlqAndAcks()
+    {
+        var broker = new RecordingBroker();
+        var consumer = new TrackingConsumer(broker, _ => Task.CompletedTask);
+        var corrupt = Encoding.UTF8.GetBytes("{not valid json");
+
+        await consumer.HandleDeliveryAsync(51, corrupt, null);
+
+        var publish = Assert.Single(broker.Publishes);
+        Assert.Equal(RabbitTopology.Exchange, publish.Exchange);
+        Assert.Equal(RabbitTopology.DlqRoutingKey, publish.RoutingKey);
+        Assert.Equal(corrupt, publish.Body);
+        Assert.Equal([51UL], broker.Acks);
+    }
 }

@@ -27,10 +27,13 @@ public abstract class ConsumerBase<TPayload>
 
     public async Task HandleDeliveryAsync(ulong deliveryTag, ReadOnlyMemory<byte> body, IDictionary<string, object?>? headers)
     {
-        var envelope = EventSerializer.Deserialize<TPayload>(body.Span);
-
+        EventEnvelope<TPayload>? envelope = null;
         try
         {
+            // Decode inside the failure path: a malformed body must take the
+            // same retry/DLQ routing as a handler failure, never escape.
+            envelope = EventSerializer.Deserialize<TPayload>(body.Span);
+
             await _handler(envelope).ConfigureAwait(false);
         }
         catch (Exception exception)
@@ -44,7 +47,9 @@ public abstract class ConsumerBase<TPayload>
                 : new Dictionary<string, object?>(headers);
             newHeaders[ExceptionHeader] = exception.Message;
 
-            var decision = RetryPolicy.Decide(retryCount, exception);
+            var decision = envelope is null
+                ? new RetryDecision.RouteToDlq()
+                : RetryPolicy.Decide(retryCount, exception);
             string routingKey;
 
             switch (decision)
