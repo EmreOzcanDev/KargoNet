@@ -47,7 +47,7 @@ findings:
   warning: 2
   info: 0
   total: 2
-status: issues_found
+status: resolved
 ---
 
 # Phase 01: Code Review Report
@@ -71,6 +71,7 @@ Two real defects were found, both in the test surface. Neither blocks the scaffo
 
 **File:** `src/Web/operator-ui/src/app/app.spec.ts:6-9`
 **Issue:** The hand-retargeted `App` component imports `RouterOutlet` (`src/app/app.ts:2,5`) and its template renders `<router-outlet />` (`src/app/app.html:5`). The scaffold `app.spec.ts` was not updated to match: `TestBed.configureTestingModule({ imports: [App] })` provides no router (`provideRouter`). `RouterOutlet`'s constructor injects the `Router` service, so `TestBed.createComponent(App)` throws a DI error (NG0201/NG0800), causing **both** tests (`should create the app` and `should render title`) to fail. This is the classic case of the default CLI scaffold test working only because the stock `App` had no `RouterOutlet`; the retarget added the outlet without updating the test.
+**Resolved:** 2026-11-20 — `provideRouter([])` added to the `TestBed` config (recovered from fixer worktree `rf-01-11804-1795115394`; agent `FixP1` died before committing). Full `ng test` not runnable on this box (no Chrome for karma); fix is the standard one prescribed above.
 **Fix:** Provide an empty router in the test config so `RouterOutlet` can resolve:
 ```ts
 import { provideRouter } from '@angular/router';
@@ -88,6 +89,7 @@ beforeEach(async () => {
 
 **File:** `tests/KargoNet.Tracking.Tests/KargoNet.Tracking.Tests.csproj:13-14`
 **Issue:** `xunit` is at major version 2 (`2.9.3`) while `xunit.runner.visualstudio` is at major version 3 (`3.1.4`). These are different major versions of the xUnit ecosystem. The v3 runner is built for the xUnit v3 test SDK/packages and is not a supported combination with the v2 `xunit` package; in practice this can prevent the test assembly from being discovered and run (a silently-green or non-executing `dotnet test`). The single test (`TrackingTests`) may therefore never actually run.
+**Resolved:** 2026-11-20 — `xunit.runner.visualstudio` pinned to `2.8.2` (matching `xunit` 2.9.3); `dotnet test` green: 1 passed, 0 failed (recovered from fixer worktree `rf-01-11804-1795115394`).
 **Fix:** Align both packages to the same major version. Either:
 - upgrade to v3: `xunit.v3` + `xunit.v3.runner.visualstudio` (v3 naming), **or**
 - pin the runner to a matching v2 line: `xunit` `2.9.3` + `xunit.runner.visualstudio` `2.x` (e.g. `2.8.2`).
