@@ -51,13 +51,13 @@ public class TopologyTests
     {
         var spec = new TopologySpec();
 
-        Assert.Equal(spec.Exchange.Name, RabbitTopology.Exchange);
-        Assert.Equal(spec.Exchange.Type, RabbitTopology.ExchangeType);
-        Assert.Equal(spec.MainQueue.Name, RabbitTopology.MainQueue);
-        Assert.Equal(spec.RetryQueue.Name, RabbitTopology.RetryQueue);
-        Assert.Equal(spec.Dlq.Name, RabbitTopology.Dlq);
-        Assert.Equal(spec.MainQueue.RoutingKey, RabbitTopology.ShipmentRoutingKey);
-        Assert.Equal(spec.RetryQueue.RoutingKey, RabbitTopology.RetryRoutingKey);
-        Assert.Equal(spec.Dlq.RoutingKey, RabbitTopology.DlqRoutingKey);
+        Assert.Equal(RabbitTopology.Exchange, spec.Exchange.Name);
+        Assert.Equal(RabbitTopology.ExchangeType, spec.Exchange.Type);
+        Assert.Equal(RabbitTopology.MainQueue, spec.MainQueue.Name);
+        Assert.Equal(RabbitTopology.RetryQueue, spec.RetryQueue.Name);
+        Assert.Equal(RabbitTopology.Dlq, spec.Dlq.Name);
+        Assert.Equal(RabbitTopology.ShipmentRoutingKey, spec.MainQueue.RoutingKey);
+        Assert.Equal(RabbitTopology.RetryRoutingKey, spec.RetryQueue.RoutingKey);
+        Assert.Equal(RabbitTopology.DlqRoutingKey, spec.Dlq.RoutingKey);
     }
 }
