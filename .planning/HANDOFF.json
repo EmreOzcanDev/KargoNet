@@ -1,46 +1,47 @@
 {
   "version": "1.0",
-  "timestamp": "2026-11-19T13:52:30.000Z",
+  "timestamp": "2026-11-19T19:09:36.082Z",
   "phase": "1",
   "phase_name": "Foundation & Scaffold",
   "phase_dir": ".planning/phases/01-foundation-scaffold",
-  "plan": 1,
-  "task": 1,
+  "plan": 3,
+  "task": 3,
   "total_tasks": 6,
   "status": "paused",
   "completed_tasks": [
-    {"id": 0, "name": "Phase 1 planning (plan-phase skill, agent PlanP1)", "status": "done", "commit": "4a900ae", "progress": "3 plans authored, validated, and committed: 01-01 (wave 1), 01-02 (wave 1), 01-03 (wave 2)"}
+    {"id": 1, "name": "Plan 01: .NET 10 SDK + KargoNet.sln + Contracts + Shipment.Api /health + .gitignore", "status": "done", "commit": "03ac37c"},
+    {"id": 2, "name": "Plan 01 tracer: build + GET /health verification", "status": "done", "commit": "03ac37c"},
+    {"id": 3, "name": "Plan 02: Angular operator-ui scaffold (checkpoint T-01-SC cleared by user 2026-11-19)", "status": "done", "commit": "02316f3"},
+    {"id": 4, "name": "Plan 02 tracer: ng build green, dist/ present", "status": "done", "commit": "02316f3"},
+    {"id": 5, "name": "Plan 03: Messaging, Tracking.Api, Portal.Web, Tracking.Tests + reference graph", "status": "done", "commit": "3abcbe0"},
+    {"id": 6, "name": "Plan 03 tracer: full-solution build + dotnet test green", "status": "done", "commit": "2797c71"},
+    {"id": 7, "name": "Code review (quick depth, 38 files) — REVIEW.md committed 006f9ee; 2 warnings (WR-01, WR-02), 0 critical", "status": "done", "commit": "006f9ee"}
   ],
   "remaining_tasks": [
-    {"id": 1, "name": "Plan 01 Task 1: .NET 10 SDK install + solution scaffold (KargoNet.sln, Directory.Build.props, KargoNet.Contracts, Shipment.Api, .gitignore) — autonomous", "status": "not_started"},
-    {"id": 2, "name": "Plan 01 Task 2: build + GET /health tracer", "status": "not_started"},
-    {"id": 3, "name": "Plan 02 Task 1: Angular operator-ui scaffold via npx @angular/cli — BLOCKING human checkpoint (T-01-SC: verify @angular/cli package legitimacy before install; never auto-approved)", "status": "not_started"},
-    {"id": 4, "name": "Plan 02 Task 2: ng build tracer + retarget template to Operator shell", "status": "not_started"},
-    {"id": 5, "name": "Plan 03 Task 1: remaining projects (KargoNet.Messaging, Tracking.Api, Portal.Web, Tracking.Tests) + reference graph — wave 2, depends on 01-01", "status": "not_started"},
-    {"id": 6, "name": "Plan 03 Task 2: full-solution build + dotnet test tracer", "status": "not_started"}
+    {"id": 8, "name": "Auto-fix WR-01 (app.spec.ts: add provideRouter()) and WR-02 (xunit v2/v3 runner mismatch in KargoNet.Tracking.Tests.csproj) — agent FixP1 IN FLIGHT at pause", "status": "in_progress"},
+    {"id": 9, "name": "Post-execution verification routing: `verification.status .planning/phases/01-foundation-scaffold --pick status`", "status": "not_started"},
+    {"id": 10, "name": "Phase 1 transition (internal transition workflow; STATE.md/ROADMAP.md phase completion)", "status": "not_started"},
+    {"id": 11, "name": "Phases 2–6: discover → smart discuss → (UI contract for phase 5) → plan → execute → review → verify → transition", "status": "not_started"},
+    {"id": 12, "name": "Milestone lifecycle: audit → complete-milestone v1.0 → cleanup → final banner", "status": "not_started"}
   ],
   "blockers": [
-    {"description": ".NET 10 SDK is not installed in the executor environment (no `dotnet` on PATH)", "type": "technical", "workaround": "Plan 01 task installs SDK to ~/.dotnet; AGENTS.md mandates toolchain install in phase 1"},
-    {"description": "Docker/Docker Compose not installed; daemon install requires root privileges the executor lacks", "type": "human_action", "workaround": "Declared as user_setup in 01-01-PLAN.md; compose stack is phase 6 — not needed for phase 1 build tasks"},
-    {"description": "Plan 02 carries checkpoint:human-verify gate=blocking-human (T-01-SC): @angular/cli npm package legitimacy must be verified by a human before install — no RESEARCH.md exists (research disabled) so the package is [ASSUMED]", "type": "human_action", "workaround": "execute-phase will stop at the checkpoint; human verifies package provenance, then execution continues"}
+    {"description": "Docker/Docker Compose not installed; daemon install requires root", "type": "human_action", "workaround": "user_setup in 01-01-SUMMARY.md; compose stack is phase 6. User granted full authority to install anything needed — phase 6 executor should attempt Docker install (may still require root)"}
   ],
   "async_jobs": [],
   "human_actions_pending": [
-    {"action": "Verify @angular/cli npm package legitimacy (blocking-human checkpoint T-01-SC in 01-02-PLAN.md)", "context": "Research disabled → package unverified [ASSUMED]; plan 02 refuses auto-install until a human confirms", "blocking": true},
-    {"action": "Install Docker + Docker Compose (root)", "context": "AGENTS.md requires the toolchain in phase 1; compose stack is built in phase 6; declared user_setup in 01-01-PLAN.md", "blocking": false}
+    {"action": "None — user granted full autonomous authority for the overnight session (2026-11-19): install anything needed, do not prompt, run autonomously", "context": "Supersedes prior interactive-checkpoint behavior; future blocking-human gates are to be resolved autonomously with safe defaults", "blocking": false}
   ],
   "decisions": [
-    {"decision": "Phase 1 treated as pure infrastructure — discuss skipped, minimal CONTEXT.md written", "rationale": "Smart-discuss infrastructure detection: goal is scaffolding, all success criteria technical, no user-facing behavior", "phase": "1"},
-    {"decision": "No UI-SPEC.md for phase 1", "rationale": "ui-plan-gate matched token 'layout' (false positive); gsd-ui-researcher confirmed phase 1 has no frontend UI scope — UI design contract belongs to phase 5 (Web Frontends, UI hint: yes)", "phase": "1"},
-    {"decision": "Autonomous run with no flags: PLAN_STRATEGY=local, phases strictly sequential 1→6, no convergence", "rationale": "Command input was empty — default gsd-autonomous behavior", "phase": "1"},
-    {"decision": "Phase 1 planning split into 3 plans: 01-01 (.NET scaffold, wave 1, autonomous) ∥ 01-02 (Angular operator-ui, wave 1, non-autonomous — blocking human checkpoint) → 01-03 (remaining projects + tests, wave 2, depends on 01-01)", "rationale": "Isolates npm supply-chain step from .NET work; wave 2 shares KargoNet.sln with 01-01 so it runs after", "phase": "1"},
-    {"decision": "All 3 plans carry STRIDE threat registers (T-01-01…T-01-05 + T-01-SC)", "rationale": "Security enforcement active in config", "phase": "1"}
+    {"decision": "Full autonomous overnight mode: no prompts, no stops; human gates resolved autonomously with safe defaults", "rationale": "Explicit user instruction 2026-11-19: 'full permission to install anything you need... do not prompt me run autonomously'", "phase": "1"},
+    {"decision": "Checkpoint T-01-SC (blocking-human npm-legitimacy) cleared by user approval: @angular/cli 22.3.0, official Angular org (maintainers angular<devops+npm@angular.io> + google-wombot)", "rationale": "Plan 02 gate required human verification before npm install; user approved via ask; recorded in 01-02-SUMMARY.md", "phase": "1"},
+    {"decision": "Phase 1 = pure infrastructure: discuss skipped, minimal CONTEXT.md (commit 16f4612); no UI-SPEC (gate token 'layout' was false positive; UI contract belongs to phase 5)", "rationale": "Smart-discuss infrastructure rule; gsd-ui-researcher confirmed no frontend scope in phase 1", "phase": "1"},
+    {"decision": "Plan split: 01-01 (.NET, wave 1) ∥ 01-02 (Angular, wave 1) → 01-03 (remaining projects + tests, wave 2)", "rationale": "Isolates npm step from .NET work; wave 2 shares KargoNet.sln", "phase": "1"},
+    {"decision": "Deviations accepted in execution: .slnx→classic .sln (--format sln); Enum.GetNames for /health; SPA --ssr false for Angular; dotnet sln <file> list syntax on .NET 10", "rationale": "Executor-reported, all verification still passing", "phase": "1"}
   ],
   "uncommitted_files": [
-    " M .planning/STATE.md",
     " M .planning/config.json",
     "?? PLAN.md"
   ],
-  "next_action": "Planning is complete and committed (4a900ae). Continue the autonomous loop with execute-phase for phase 1: dispatch gsd-executor with skill://gsd-execute-phase arg '1 --no-transition'. Wave 1 runs 01-01 and 01-02 in parallel; 01-02 will halt at the blocking-human npm-legitimacy checkpoint (T-01-SC) — surface that to the user via ask. Wave 2 (01-03) follows.",
-  "context_notes": "Mid gsd-autonomous run (milestone v1.0, 6 phases, 0 complete). Discovery done; phase 1 pre-plan steps done; planning completed by agent PlanP1 after the initial handoff was written — 3 plans committed as 4a900ae, ROADMAP.md updated. PlanP1 is idle and must NOT be cancelled (it is done anyway). Uncommitted: STATE.md (frontmatter), config.json (restructured), root PLAN.md (project-level todo overview written by planner) — all planner-agent writes, not part of the plan commit."
+  "next_action": "Check FixP1 (proc://FixP1 / agent://FixP1 / history://FixP1): if completed, verify WR-01/WR-02 fixed + `~/.dotnet/dotnet test tests/KargoNet.Tracking.Tests` green + REVIEW.md marks findings resolved; if the job died, re-dispatch gsd-code-fixer scoped to REVIEW.md findings only. Then run `verification.status .planning/phases/01-foundation-scaffold --pick status`, route per the autonomous workflow (passed → transition), then continue the autonomous loop into phase 2.",
+  "context_notes": "Mid gsd-autonomous run (milestone v1.0, 6 phases, 0 complete — phase 1 execution done, awaiting fix verification + transition). Phase 1: 3/3 plans executed and verified (dotnet 10.0.404 at ~/.dotnet, solution build 0 warnings/0 errors, dotnet test 1 passed, GET /health 200 with 7 ShipmentStatus values, ng build green). Code review found 2 quick-depth warnings, both in test surfaces: WR-01 app.spec.ts missing provideRouter(), WR-02 xunit 2.9.3 vs xunit.runner.visualstudio 3.1.4 mismatch. Fixer agent FixP1 dispatched and in flight at pause — NOT cancelled. STATE.md was committed by the executor (67b3dc6); remaining uncommitted: config.json (pre-existing planner restructure) and root PLAN.md (planner's project todo overview) — both predate this session's execution and were deliberately left untouched."
 }
