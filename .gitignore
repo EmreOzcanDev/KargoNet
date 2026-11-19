@@ -6,3 +6,5 @@ node_modules/
 *.user
 *.swp
 *.swo
+.planning/.omp-*.json
+.planning/state.json

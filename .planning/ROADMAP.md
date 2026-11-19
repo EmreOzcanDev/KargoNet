@@ -24,12 +24,12 @@
   2. Solution layout matches plan: src/BuildingBlocks, src/Services, src/Web, tests directories exist with their projects
   3. Angular app is scaffolded via npx and `ng build` succeeds
   4. .gitignore excludes bin/, obj/, node_modules/, .angular/
-**Plans:** 3 plans
+**Plans:** 3/3 plans executed
 
 Plans:
-- [ ] 01-01-PLAN.md — .NET 10 SDK + solution tracer (sln, Contracts, Shipment.Api /health, .gitignore)
-- [ ] 01-02-PLAN.md — Angular operator-ui scaffold + npm legitimacy gate
-- [ ] 01-03-PLAN.md — Remaining .NET projects (Messaging, Tracking.Api, Portal.Web) + xUnit test project
+- [x] 01-01-PLAN.md — .NET 10 SDK + solution tracer (sln, Contracts, Shipment.Api /health, .gitignore)
+- [x] 01-02-PLAN.md — Angular operator-ui scaffold + npm legitimacy gate
+- [x] 01-03-PLAN.md — Remaining .NET projects (Messaging, Tracking.Api, Portal.Web) + xUnit test project
 
 ### Phase 2: Contracts & Messaging
 **Goal**: Shipment events can be published and consumed over RabbitMQ with reliable delivery, hand-built retry, and dead-letter routing.
@@ -93,7 +93,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Scaffold | 0/3 | Not started | - |
+| 1. Foundation & Scaffold | 3/3 | In Progress | - |
 | 2. Contracts & Messaging | 0/? | Not started | - |
 | 3. Shipment API | 0/? | Not started | - |
 | 4. Tracking API | 0/? | Not started | - |
