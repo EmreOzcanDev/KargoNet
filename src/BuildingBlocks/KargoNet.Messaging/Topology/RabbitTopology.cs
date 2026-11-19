@@ -24,9 +24,9 @@ public static class RabbitTopology
     /// <summary>Applies the full topology (exchange, three queues, three bindings) to <paramref name="channel"/>.</summary>
     public static Task DeclareAsync(IChannel channel)
     {
-        var retryArguments = new Dictionary<string, object>();
+        var retryArguments = new Dictionary<string, object?>();
         foreach (var argument in Spec.RetryQueue.Arguments!)
-            retryArguments[argument.Key] = argument.Value!;
+            retryArguments[argument.Key] = argument.Value;
 
         return Task.WhenAll(
             channel.ExchangeDeclareAsync(

@@ -24,7 +24,7 @@ public sealed class RabbitOutboxChannel : IOutboxChannel
 
         if (headers is { Count: > 0 })
         {
-            var table = new Dictionary<string, object>();
+            var table = new Dictionary<string, object?>();
             foreach (var header in headers)
                 table[header.Key] = header.Value;
             properties.Headers = table;
