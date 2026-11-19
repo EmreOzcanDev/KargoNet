@@ -65,37 +65,37 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CUST-01 | — | Pending |
-| CUST-02 | — | Pending |
-| CUST-03 | — | Pending |
-| OPS-01 | — | Pending |
-| OPS-02 | — | Pending |
-| OPS-03 | — | Pending |
-| OPS-04 | — | Pending |
-| SHIP-01 | — | Pending |
-| SHIP-02 | — | Pending |
-| SHIP-03 | — | Pending |
-| SHIP-04 | — | Pending |
-| TRK-01 | — | Pending |
-| TRK-02 | — | Pending |
-| TRK-03 | — | Pending |
-| TRK-04 | — | Pending |
-| TRK-05 | — | Pending |
-| MSG-01 | — | Pending |
-| MSG-02 | — | Pending |
-| MSG-03 | — | Pending |
-| MSG-04 | — | Pending |
-| PLAT-01 | — | Pending |
-| PLAT-02 | — | Pending |
-| PLAT-03 | — | Pending |
-| PLAT-04 | — | Pending |
-| PLAT-05 | — | Pending |
+| CUST-01 | Phase 5 | Pending |
+| CUST-02 | Phase 5 | Pending |
+| CUST-03 | Phase 5 | Pending |
+| OPS-01 | Phase 5 | Pending |
+| OPS-02 | Phase 5 | Pending |
+| OPS-03 | Phase 5 | Pending |
+| OPS-04 | Phase 5 | Pending |
+| SHIP-01 | Phase 3 | Pending |
+| SHIP-02 | Phase 3 | Pending |
+| SHIP-03 | Phase 3 | Pending |
+| SHIP-04 | Phase 3 | Pending |
+| TRK-01 | Phase 4 | Pending |
+| TRK-02 | Phase 4 | Pending |
+| TRK-03 | Phase 4 | Pending |
+| TRK-04 | Phase 4 | Pending |
+| TRK-05 | Phase 4 | Pending |
+| MSG-01 | Phase 2 | Pending |
+| MSG-02 | Phase 2 | Pending |
+| MSG-03 | Phase 2 | Pending |
+| MSG-04 | Phase 2 | Pending |
+| PLAT-01 | Phase 6 | Pending |
+| PLAT-02 | Phase 6 | Pending |
+| PLAT-03 | Phase 6 | Pending |
+| PLAT-04 | Phase 6 | Pending |
+| PLAT-05 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 26 total
-- Mapped to phases: 0
-- Unmapped: 26 ⚠️ (will be mapped during roadmap creation)
+- v1 requirements: 25 total
+- Mapped to phases: 25
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-11-19*
-*Last updated: 2026-11-19 after initial definition*
+*Last updated: 2026-11-19 after roadmap creation*
