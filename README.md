@@ -72,11 +72,26 @@ Databases, tables, and RabbitMQ topology are created automatically on first star
 
    and confirm it is reprocessed (the DLQ count drops).
 
-## Development mode (without Docker)
+## Development mode
 
-Run each piece on the host:
+**Docker Compose is the supported development flow** — it is the only place the
+apps' connection strings are wired up (the root `.env` is consumed by Compose;
+ASP.NET Core does not load it, and the `appsettings*.json` files carry no
+connection strings).
 
-- **Infrastructure:** local Postgres (databases `shipments` and `tracking`), RabbitMQ, and Redis. The credentials in the root `.env` are the defaults used by the app configs — change them for anything shared.
+If you run pieces on the host instead, bring up local Postgres (databases
+`shipments` and `tracking`), RabbitMQ, and Redis, then supply the connection
+strings yourself as environment variables before `dotnet run`:
+
+| Variable | Used by | Example (localhost) |
+|---|---|---|
+| `ConnectionStrings__ShipmentDb` | Shipment API | `Host=localhost;Database=shipments;Username=…;Password=…` |
+| `ConnectionStrings__TrackingDb` | Tracking API | `Host=localhost;Database=tracking;Username=…;Password=…` |
+| `ConnectionStrings__Redis` | Tracking API | `localhost:6379` |
+| `ConnectionStrings__RabbitMq` | both APIs | `amqp://…@localhost:5672/` |
+
+Then:
+
 - **APIs:** `dotnet run` in `src/Services/Shipment.Api` (port 5001) and `src/Services/Tracking.Api` (port 5002). Migrations run in-process at startup.
 - **Portal:** `dotnet run` in `src/Web/Portal.Web` (port 5000).
 - **Operator UI:** `npm install && npm run start` in `src/Web/operator-ui` (`ng serve`, port 4200). The dev `environment.ts` points at absolute `localhost:5001`/`localhost:5002` bases.
@@ -106,7 +121,7 @@ dotnet test              # full xUnit suite (repo root)
 and in `src/Web/operator-ui`:
 
 ```bash
-npm test                 # vitest suite
+npm test                 # Angular test suite (ng test, vitest-backed)
 ```
 
 The suite covers the three core reliability areas:
