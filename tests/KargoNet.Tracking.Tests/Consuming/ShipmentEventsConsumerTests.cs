@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using KargoNet.Contracts.Events;
 using KargoNet.Contracts.Models;
 using KargoNet.Messaging.Consuming;
+using KargoNet.Messaging.Infra;
 using KargoNet.Messaging.Topology;
 using KargoNet.Tracking.Api.Consuming;
 using KargoNet.Tracking.Api.Data;
@@ -10,38 +11,16 @@ using KargoNet.Tracking.Api.Entities;
 using KargoNet.Tracking.Api.Tracking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace KargoNet.Tracking.Tests.Consuming
 {
     public class ShipmentEventsConsumerTests
     {
-        private sealed class RecordingBroker : IConsumerBroker
-        {
-            public List<ulong> Acks { get; } = [];
-
-            public record Publish(string Exchange, string RoutingKey, byte[] Body, IDictionary<string, object?>? Headers);
-
-            public List<Publish> Publishes { get; } = [];
-
-            public Exception? PublishFailure = null;
-
-            public Task AckAsync(ulong deliveryTag)
-            {
-                Acks.Add(deliveryTag);
-                return Task.CompletedTask;
-            }
-
-            public Task PublishAsync(string exchange, string routingKey, ReadOnlyMemory<byte> body, IDictionary<string, object?>? headers)
-            {
-                if (PublishFailure is not null)
-                    throw PublishFailure;
-
-                Publishes.Add(new Publish(exchange, routingKey, body.ToArray(), headers));
-                return Task.CompletedTask;
-            }
-        }
-
         private sealed class RecordingCache : ITrackingCache
         {
             public List<string> Deletions { get; } = [];
@@ -75,7 +54,7 @@ namespace KargoNet.Tracking.Tests.Consuming
             public TrackingDbContext Db { get; }
             public RecordingCache Cache { get; }
             public RecordingBroadcaster Broadcaster { get; }
-            public RecordingBroker Broker { get; }
+            public FakeChannel Channel { get; }
             public ShipmentEventsConsumer Consumer { get; }
             public ShipmentEventHandler Handler { get; }
 
@@ -84,9 +63,17 @@ namespace KargoNet.Tracking.Tests.Consuming
                 Db = CreateContext();
                 Cache = new RecordingCache();
                 Broadcaster = new RecordingBroadcaster();
-                Broker = new RecordingBroker();
+                Channel = new FakeChannel();
                 Handler = new ShipmentEventHandler(Db, Cache, Broadcaster, NullLogger<ShipmentEventHandler>.Instance);
-                Consumer = new ShipmentEventsConsumer(Broker, Handler, NullLogger<ShipmentEventsConsumer>.Instance);
+
+                var provider = new ServiceCollection()
+                    .AddSingleton<ShipmentEventHandler>(Handler)
+                    .BuildServiceProvider();
+
+                var broker = new RabbitConsumerBroker(new FakeChannelFactory(Channel), NullLogger<RabbitConsumerBroker>.Instance);
+                Consumer = new ShipmentEventsConsumer(
+                    provider.GetRequiredService<IServiceScopeFactory>(), broker, new FakeChannelFactory(Channel),
+                    NullLogger<ShipmentEventsConsumer>.Instance);
             }
 
             public void Dispose() => Db.Dispose();
@@ -149,8 +136,8 @@ namespace KargoNet.Tracking.Tests.Consuming
 
             Assert.True(await fixture.Db.ProcessedEvents.AnyAsync(p => p.EventId == eventId));
 
-            Assert.Equal([7UL], fixture.Broker.Acks);
-            Assert.Empty(fixture.Broker.Publishes);
+            Assert.Equal([7UL], fixture.Channel.Acks);
+            Assert.Empty(fixture.Channel.Publishes);
             Assert.Equal(["TRK-100"], fixture.Cache.Deletions);
             var broadcast = Assert.Single(fixture.Broadcaster.Broadcasts);
             Assert.Equal("TRK-100", broadcast.trackingNumber);
@@ -170,8 +157,8 @@ namespace KargoNet.Tracking.Tests.Consuming
             Assert.Equal(1, await fixture.Db.ShipmentTrackings.CountAsync());
             Assert.Equal(1, await fixture.Db.TrackingEvents.CountAsync());
             Assert.Equal(1, await fixture.Db.ProcessedEvents.CountAsync());
-            Assert.Equal([1UL, 2UL], fixture.Broker.Acks);
-            Assert.Empty(fixture.Broker.Publishes);
+            Assert.Equal([1UL, 2UL], fixture.Channel.Acks);
+            Assert.Empty(fixture.Channel.Publishes);
             Assert.Single(fixture.Cache.Deletions);
             Assert.Single(fixture.Broadcaster.Broadcasts);
         }
@@ -195,8 +182,8 @@ namespace KargoNet.Tracking.Tests.Consuming
             Assert.Equal(2, timeline.Count);
             Assert.Equal(ShipmentEventsConsumer.StatusChangedEventType, timeline[1].EventType);
 
-            Assert.Equal([1UL, 2UL], fixture.Broker.Acks);
-            Assert.Empty(fixture.Broker.Publishes);
+            Assert.Equal([1UL, 2UL], fixture.Channel.Acks);
+            Assert.Empty(fixture.Channel.Publishes);
             Assert.Equal(2, fixture.Cache.Deletions.Count);
             Assert.Equal(2, fixture.Broadcaster.Broadcasts.Count);
         }
@@ -211,19 +198,19 @@ namespace KargoNet.Tracking.Tests.Consuming
 
             // First failure: no retry header yet -> republish to the retry queue.
             await fixture.Consumer.HandleDeliveryAsync(1, body, null);
-            var first = Assert.Single(fixture.Broker.Publishes);
+            var first = Assert.Single(fixture.Channel.Publishes);
             Assert.Equal(RabbitTopology.Exchange, first.Exchange);
             Assert.Equal(RabbitTopology.RetryRoutingKey, first.RoutingKey);
             Assert.Equal(1, first.Headers!["x-retry-count"]);
             Assert.False(string.IsNullOrEmpty((string)first.Headers!["x-exception"]!));
-            Assert.Equal([1UL], fixture.Broker.Acks);
+            Assert.Equal([1UL], fixture.Channel.Acks);
 
             // Exhausted retries (header at the cap) -> dead-letter, still acked.
             var exhausted = new Dictionary<string, object?> { ["x-retry-count"] = RetryPolicy.MaxRetries };
             await fixture.Consumer.HandleDeliveryAsync(2, body, exhausted);
-            var second = fixture.Broker.Publishes[1];
+            var second = fixture.Channel.Publishes[1];
             Assert.Equal(RabbitTopology.DlqRoutingKey, second.RoutingKey);
-            Assert.Equal([1UL, 2UL], fixture.Broker.Acks);
+            Assert.Equal([1UL, 2UL], fixture.Channel.Acks);
         }
 
         [Fact]
@@ -240,15 +227,15 @@ namespace KargoNet.Tracking.Tests.Consuming
             var body = EventSerializer.Serialize(envelope);
 
             await fixture.Consumer.HandleDeliveryAsync(1, body, null);
-            var first = Assert.Single(fixture.Broker.Publishes);
+            var first = Assert.Single(fixture.Channel.Publishes);
             Assert.Equal(RabbitTopology.RetryRoutingKey, first.RoutingKey);
             Assert.Equal(1, first.Headers!["x-retry-count"]);
-            Assert.Equal([1UL], fixture.Broker.Acks);
+            Assert.Equal([1UL], fixture.Channel.Acks);
 
             var exhausted = new Dictionary<string, object?> { ["x-retry-count"] = RetryPolicy.MaxRetries };
             await fixture.Consumer.HandleDeliveryAsync(2, body, exhausted);
-            Assert.Equal(RabbitTopology.DlqRoutingKey, fixture.Broker.Publishes[1].RoutingKey);
-            Assert.Equal([1UL, 2UL], fixture.Broker.Acks);
+            Assert.Equal(RabbitTopology.DlqRoutingKey, fixture.Channel.Publishes[1].RoutingKey);
+            Assert.Equal([1UL, 2UL], fixture.Channel.Acks);
             Assert.Equal(0, await fixture.Db.ShipmentTrackings.CountAsync());
         }
 
@@ -278,6 +265,190 @@ namespace KargoNet.Tracking.Tests.Consuming
             Assert.Equal(0, await fixture.Db.TrackingEvents.CountAsync());
             Assert.Empty(fixture.Cache.Deletions);
             Assert.Empty(fixture.Broadcaster.Broadcasts);
+        }
+
+        /// <summary><see cref="LazyChannelFactory"/> wired to a canned channel (no broker).</summary>
+        private sealed class FakeChannelFactory : LazyChannelFactory
+        {
+            private readonly IChannel _channel;
+
+            public FakeChannelFactory(IChannel channel)
+                : base(new ConfigurationBuilder().Build())
+                => _channel = channel;
+
+            public override Task<IChannel> GetChannelAsync() => Task.FromResult(_channel);
+        }
+
+        /// <summary>
+        /// Hand-rolled <see cref="IChannel"/> covering the calls the
+        /// <see cref="RabbitConsumerBroker"/> and
+        /// <see cref="ShipmentEventsConsumer"/> pipeline make (acks,
+        /// republishes); everything else throws.
+        /// </summary>
+        private sealed class FakeChannel : IChannel
+        {
+            public List<ulong> Acks { get; } = [];
+
+            public sealed record Published(
+                string Exchange,
+                string RoutingKey,
+                IReadOnlyBasicProperties? Properties,
+                byte[] Body)
+            {
+                public IDictionary<string, object>? Headers => Properties?.Headers;
+            }
+
+            public List<Published> Publishes { get; } = [];
+
+            public ValueTask BasicAckAsync(ulong deliveryTag, bool multiple, CancellationToken cancellationToken = default)
+            {
+                Acks.Add(deliveryTag);
+                return ValueTask.CompletedTask;
+            }
+
+            public ValueTask BasicPublishAsync<TProperties>(string exchange, string routingKey, bool mandatory, TProperties? basicProperties, ReadOnlyMemory<byte> body, CancellationToken cancellationToken = default)
+                where TProperties : IReadOnlyBasicProperties, IAmqpHeader
+            {
+                Publishes.Add(new Published(exchange, routingKey, basicProperties, body.ToArray()));
+                return ValueTask.CompletedTask;
+            }
+
+            public Task<BasicGetResult> BasicGetAsync(string queue, bool autoAck, CancellationToken cancellationToken = default)
+                => Task.FromException<BasicGetResult>(new NotImplementedException());
+
+            public Task<QueueDeclareOk> QueueDeclarePassiveAsync(string queue, CancellationToken cancellationToken = default)
+                => Task.FromException<QueueDeclareOk>(new NotImplementedException());
+
+            public ValueTask BasicPublishAsync<TProperties>(CachedString exchange, CachedString routingKey, bool mandatory, TProperties? basicProperties, ReadOnlyMemory<byte> body, CancellationToken cancellationToken = default)
+                where TProperties : IReadOnlyBasicProperties, IAmqpHeader
+                => throw new NotImplementedException();
+
+            // --- members the consumer pipeline never touches ---------------------------
+
+            public ValueTask BasicRejectAsync(ulong deliveryTag, bool requeue, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+            public ValueTask BasicNackAsync(ulong deliveryTag, bool multiple, bool requeue, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task<string> BasicConsumeAsync(string queue, bool autoAck, string consumerTag, bool noLocal, bool exclusive, IDictionary<string, object?>? arguments, IAsyncBasicConsumer consumer, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task BasicCancelAsync(string consumerTag, bool noWait = false, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task BasicQosAsync(uint prefetchSize, ushort prefetchCount, bool global, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public ValueTask<ulong> GetNextPublishSequenceNumberAsync(CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task CloseAsync(ushort replyCode, string replyText, bool abort, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task CloseAsync(ShutdownEventArgs reason, bool abort)
+                => throw new NotImplementedException();
+
+            public Task CloseAsync(ShutdownEventArgs reason, bool abort, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task<uint> ConsumerCountAsync(string queue, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task<uint> MessageCountAsync(string queue, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task ExchangeDeclareAsync(string exchange, string type, bool durable, bool autoDelete, IDictionary<string, object?>? arguments = null, bool passive = false, bool noWait = false, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task ExchangeDeclarePassiveAsync(string exchange, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task ExchangeDeleteAsync(string exchange, bool ifUnused = false, bool noWait = false, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task ExchangeBindAsync(string destination, string source, string routingKey, IDictionary<string, object?>? arguments = null, bool noWait = false, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task ExchangeUnbindAsync(string destination, string source, string routingKey, IDictionary<string, object?>? arguments = null, bool noWait = false, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task<QueueDeclareOk> QueueDeclareAsync(string queue, bool durable, bool exclusive, bool autoDelete, IDictionary<string, object?>? arguments = null, bool passive = false, bool noWait = false, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task<uint> QueueDeleteAsync(string queue, bool ifUnused, bool ifEmpty, bool noWait = false, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task<uint> QueuePurgeAsync(string queue, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task QueueBindAsync(string queue, string exchange, string routingKey, IDictionary<string, object?>? arguments = null, bool noWait = false, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task QueueUnbindAsync(string queue, string exchange, string routingKey, IDictionary<string, object?>? arguments = null, bool noWait = false, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task QueueUnbindAsync(string queue, string exchange, string routingKey, IDictionary<string, object?>? arguments, CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task TxSelectAsync(CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task TxCommitAsync(CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public Task TxRollbackAsync(CancellationToken cancellationToken = default)
+                => throw new NotImplementedException();
+
+            public void Dispose() => throw new NotImplementedException();
+            public ValueTask DisposeAsync() => throw new NotImplementedException();
+
+            // --- properties -----------------------------------------------------------
+
+            public int ChannelNumber => 0;
+            public ShutdownEventArgs? CloseReason => null;
+            public IAsyncBasicConsumer? DefaultConsumer { get; set; }
+            public bool IsClosed => false;
+            public bool IsOpen => true;
+            public string CurrentQueue => string.Empty;
+            public TimeSpan ContinuationTimeout { get; set; }
+
+            // --- events ---------------------------------------------------------------
+
+            public event AsyncEventHandler<BasicAckEventArgs>? BasicAcksAsync
+            {
+                add => throw new NotImplementedException();
+                remove => throw new NotImplementedException();
+            }
+
+            public event AsyncEventHandler<BasicNackEventArgs>? BasicNacksAsync
+            {
+                add => throw new NotImplementedException();
+                remove => throw new NotImplementedException();
+            }
+
+            public event AsyncEventHandler<BasicReturnEventArgs>? BasicReturnAsync
+            {
+                add => throw new NotImplementedException();
+                remove => throw new NotImplementedException();
+            }
+
+            public event AsyncEventHandler<CallbackExceptionEventArgs>? CallbackExceptionAsync
+            {
+                add => throw new NotImplementedException();
+                remove => throw new NotImplementedException();
+            }
+
+            public event AsyncEventHandler<ShutdownEventArgs>? ChannelShutdownAsync
+            {
+                add => throw new NotImplementedException();
+                remove => throw new NotImplementedException();
+            }
+
+            public event AsyncEventHandler<FlowControlEventArgs>? FlowControlAsync
+            {
+                add => throw new NotImplementedException();
+                remove => throw new NotImplementedException();
+            }
         }
     }
 }
