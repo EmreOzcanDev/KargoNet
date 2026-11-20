@@ -2,19 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 milestone_name: KargoNet
-current_plan: 3
+current_plan: Not started
 status: Not started
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-11-19T18:43:00.447Z"
-state_head: 81a79461146549e85d263f3d62795f7453b81771
+stopped_at: Phase 3 complete, ready to plan Phase 4
+last_updated: "2026-11-20T01:08:03.104Z"
+state_head: a48b6aa3adde7d89fa20b32117a1255a1517797a
 progress:
   total_phases: 6
-  completed_phases: 0
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 3
+  total_plans: 10
+  completed_plans: 10
+  percent: 50
 last_activity: 2026-11-19
-current_phase: 1
-current_phase_name: Foundation & Scaffold
+current_phase: 4
+current_phase_name: Tracking API
 last_activity_desc: STATE.md frontmatter restored
 ---
 
@@ -27,23 +28,23 @@ last_activity_desc: STATE.md frontmatter restored
 - **Roadmap**: See [ROADMAP.md](./ROADMAP.md) for phase structure and success criteria.
 
 **Core value:** Reliable shipment status propagation: a status change made in the operator UI must reach the customer portal and the operator's live view without loss, even when RabbitMQ or individual consumers are temporarily down.
-**Current focus:** Phase 3 — Shipment API
+**Current focus:** Phase 4 — Tracking API
 
 ## Current Position
-Current Plan: 3
+Current Plan: Not started
 Total Plans in Phase: TBD
 
 
-- **Phase**: 3 (Shipment API)
+- **Phase**: 4 (Tracking API)
 - **Status**: Ready to plan
-- **Last Activity**: 2026-11-20 — Phase 2 complete (verification 4/4 passed), transitioned to Phase 3
+- **Last Activity**: 2026-11-20 — Phase 3 complete (verification 4/4 passed), transitioned to Phase 4
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases completed | 2/6 |
-| Requirements validated | 4/25 |
+| Phases completed | 3/6 |
+| Requirements validated | 8/25 |
 **Per-Plan Metrics:**
 
 | Plan | Duration | Tasks | Files |
@@ -55,6 +56,9 @@ Total Plans in Phase: TBD
 | Phase 2 P02 | 25m | 2 tasks | 5 files |
 | Phase 2 P03 | 35m | 2 tasks | 8 files |
 | Phase 2 P04 | 35m | 2 tasks | 7 files |
+| Phase 3 P01 | 40m | 2 tasks | 10 files |
+| Phase 3 P02 | 45m | 2 tasks | 6 files |
+| Phase 3 P03 | 30m | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -68,6 +72,11 @@ Total Plans in Phase: TBD
 - [Phase 2]: 3-attempt semantics — attempt 1 = first delivery; republish attempts 1&2 with incremented x-retry-count + x-exception; >=3 -> DLQ with x-exception; always ack, never requeue
 - [Phase 2]: RabbitMQ.Client pinned 7.2.2 (AGENTS.md pins 7.x; 7.x confirm API: seq no + BasicPublishAsync + BasicAcksAsync)
 - [Phase 2]: IOutboxChannel seam + pure RetryPolicy.Decide make publish/retry unit-testable broker-free; live broker behavior deferred to Phase 6
+- [Phase 3]: Shipment + OutboxMessage entities, string-converted statuses, unique TrackingNumber, (Status,CreatedAt) outbox index; InitialCreate migration design-time (dotnet-ef 10.0.15)
+- [Phase 3]: Event types shipment.created / shipment.status.changed; both write paths (POST create, PUT status) persist entity + outbox row in one EF transaction
+- [Phase 3]: OutboxPublisherService: 2 s poll, batch 50, verbatim PayloadJson to routing key shipment, per-row confirm-mark in own transaction, failure leaves Pending (never delete), survives poll DB failures
+- [Phase 3]: LazyOutboxChannelFactory (SemaphoreSlim-guarded) opens the broker channel on first publish — API starts without a reachable broker
+- [Phase 3]: EF Core/Design/InMemory 10.0.15 + Npgsql EF 10.0.3 pinned; tests use Database:Provider config switch (DI-swap routes dead on EF Core 10)
 
 ### Todos
 - (none yet)
@@ -78,9 +87,9 @@ Total Plans in Phase: TBD
 
 ## Session Continuity
 
-Last session: 2026-11-20T23:00:00Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-11-20T23:30:00Z
+Stopped at: Phase 3 complete, ready to plan Phase 4
 Resume file: None
 
 ---
-*Last updated: 2026-11-20 after Phase 2*
+*Last updated: 2026-11-20 after Phase 3*

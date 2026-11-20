@@ -20,10 +20,10 @@
 
 ### Shipment API
 
-- [ ] **SHIP-01**: `POST /api/shipments` creates a shipment and records the `ShipmentCreated` event via outbox
-- [ ] **SHIP-02**: `GET /api/shipments` lists all shipments
-- [ ] **SHIP-03**: `GET /api/shipments/{trackingNumber}` returns a single shipment by tracking number
-- [ ] **SHIP-04**: `PUT /api/shipments/{id}/status` changes status and records `ShipmentStatusChanged` via outbox
+- [x] **SHIP-01**: `POST /api/shipments` creates a shipment and records the `ShipmentCreated` event via outbox
+- [x] **SHIP-02**: `GET /api/shipments` lists all shipments
+- [x] **SHIP-03**: `GET /api/shipments/{trackingNumber}` returns a single shipment by tracking number
+- [x] **SHIP-04**: `PUT /api/shipments/{id}/status` changes status and records `ShipmentStatusChanged` via outbox
 
 ### Tracking API
 
@@ -72,10 +72,10 @@
 | OPS-02 | Phase 5 | Pending |
 | OPS-03 | Phase 5 | Pending |
 | OPS-04 | Phase 5 | Pending |
-| SHIP-01 | Phase 3 | Pending |
-| SHIP-02 | Phase 3 | Pending |
-| SHIP-03 | Phase 3 | Pending |
-| SHIP-04 | Phase 3 | Pending |
+| SHIP-01 | Phase 3 | Complete |
+| SHIP-02 | Phase 3 | Complete |
+| SHIP-03 | Phase 3 | Complete |
+| SHIP-04 | Phase 3 | Complete |
 | TRK-01 | Phase 4 | Pending |
 | TRK-02 | Phase 4 | Pending |
 | TRK-03 | Phase 4 | Pending |

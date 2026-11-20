@@ -15,11 +15,11 @@ Reliable shipment status propagation: a status change made in the operator UI mu
 - ✓ Solution scaffold: KargoNet.sln, all projects, Angular app, .gitignore — Phase 1
 - ✓ Contracts: ShipmentCreated, ShipmentStatusChanged payload records + ShipmentStatus enum + event envelope — Phase 2
 - ✓ Messaging: RabbitMQ topology (exchange, main/retry 5s-TTL/DLQ queues), publisher with confirms, consumer base with retry and dead-letter logic — Phase 2
+- ✓ Shipment.Api: EF Core model (Shipment, OutboxMessage), InitialCreate migration, REST endpoints (POST/GET/PUT), outbox publisher background service — Phase 3
 
 ### Active
 
 - [ ] Toolchain bootstrap: Docker installed and working (.NET 10 SDK validated Phase 1)
-- [ ] Shipment.Api: EF Core model (Shipments, OutboxMessages), migrations, REST endpoints (POST/GET/PUT), outbox publisher background service
 - [ ] Tracking.Api: event consumer with idempotency (ProcessedEvents), read model (ShipmentTracking, TrackingEvents), Redis cache-aside, SignalR hub, DLQ admin endpoints
 - [ ] Portal.Web: MVC customer portal with tracking search, timeline view, create-shipment form
 - [ ] Operator UI: Angular app with shipments table, status-update action, SignalR live updates, timeline detail drawer, nginx proxy
@@ -55,7 +55,7 @@ Reliable shipment status propagation: a status change made in the operator UI mu
 |----------|-----------|---------|
 | .NET 10 with EF Core + Npgsql | SDK target from plan; Npgsql is the standard EF provider for PostgreSQL | — Pending |
 | RabbitMQ.Client 7.x async API, hand-built retry/DLQ | Plan requires explicit control over retry count, TTL, and DLQ routing; no middleware abstraction | ✓ Phase 2 |
-| Outbox pattern for reliable publishing | Status change and event row saved in one EF transaction; background publisher polls and publishes with confirms; events survive RabbitMQ downtime | — Pending |
+| Outbox pattern for reliable publishing | Status change and event row saved in one EF transaction; background publisher polls and publishes with confirms; events survive RabbitMQ downtime | ✓ Phase 3 |
 | Idempotency via ProcessedEvents table | Consumer checks EventId before applying, in the same transaction as the read-model update | — Pending |
 | Redis cache-aside with 10-min TTL | Tracking lookups are read-heavy; cache deleted/overwritten on event consumption | — Pending |
 | SignalR for operator live updates | Real-time push to Angular without polling; broadcasts to all operators + per-tracking-number groups | — Pending |
@@ -82,4 +82,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-20 after Phase 2*
+*Last updated: 2026-11-20 after Phase 3*
