@@ -74,12 +74,21 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
         var channel = await _channelFactory.GetChannelAsync().ConfigureAwait(false);
         var consumer = new DeliveryConsumer(handler, _logger);
 
+        // Completed when the broker shuts the channel down — the caller
+        // (the consumer's retry loop) must not re-subscribe until then,
+        // otherwise every iteration leaks a new BasicConsume on the same
+        // shared channel (unbounded consumer growth).
+        var channelShutdown = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        consumer.ChannelShutdown = channelShutdown;
+
         // Prefetch a bounded batch (D2): with autoAck: false the broker must
         // not pile unacknowledged deliveries onto this consumer while a slow
         // apply (EF round-trip) is in flight.
         await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: 10, global: false, ct).ConfigureAwait(false);
 
         // autoAck: false — a delivery is only acknowledged after the
+        // handler's pipeline completes, so a crash redelivers it.
         await channel.BasicConsumeAsync(
             queue,
             autoAck: false,
@@ -89,12 +98,20 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
             arguments: null,
             consumer,
             ct).ConfigureAwait(false);
+
+        // Block until the channel is shut down so the caller's retry loop
+        // only re-subscribes after a real failure. Returning immediately
+        // would leak a new BasicConsume on the same shared channel on
+        // every loop iteration (unbounded consumer growth).
+        await channelShutdown.Task.ConfigureAwait(false);
     }
 
     private sealed class DeliveryConsumer : IAsyncBasicConsumer
     {
         private readonly Func<ulong, ReadOnlyMemory<byte>, IDictionary<string, object?>?, Task> _handler;
         private readonly ILogger _logger;
+
+        public TaskCompletionSource? ChannelShutdown { get; set; }
 
         public DeliveryConsumer(
             Func<ulong, ReadOnlyMemory<byte>, IDictionary<string, object?>?, Task> handler,
@@ -156,7 +173,10 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
             => Task.CompletedTask;
 
         public Task HandleChannelShutdownAsync(object sender, ShutdownEventArgs e)
-            => Task.CompletedTask;
+        {
+            ChannelShutdown?.TrySetResult();
+            return Task.CompletedTask;
+        }
 
         public IChannel? Channel { get; set; }
     }

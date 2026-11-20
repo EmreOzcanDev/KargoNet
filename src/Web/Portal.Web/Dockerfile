@@ -11,4 +11,4 @@ WORKDIR /app
 COPY --from=sdk /app/publish .
 USER app
 EXPOSE 5000
-ENTRYPOINT ["/app/Portal.Web.dll"]
+ENTRYPOINT ["dotnet", "/app/Portal.Web.dll"]

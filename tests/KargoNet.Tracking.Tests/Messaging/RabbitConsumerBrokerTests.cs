@@ -74,7 +74,11 @@ namespace KargoNet.Tracking.Tests.Messaging
             var channel = new FakeChannel();
             var broker = CreateBroker(channel);
 
-            await broker.ConsumeAsync("shipments.main", (_, _, _) => Task.CompletedTask, CancellationToken.None);
+            var consume = broker.ConsumeAsync("shipments.main", (_, _, _) => Task.CompletedTask, CancellationToken.None);
+
+            // ConsumeAsync blocks until the channel shuts down; simulate the broker closing it.
+            channel.SimulateChannelShutdown();
+            await consume;
 
             var (queue, autoAck) = Assert.Single(channel.Consumes);
             Assert.Equal("shipments.main", queue);
@@ -87,7 +91,10 @@ namespace KargoNet.Tracking.Tests.Messaging
             var channel = new FakeChannel();
             var broker = CreateBroker(channel);
 
-            await broker.ConsumeAsync("shipments.main", (_, _, _) => Task.CompletedTask, CancellationToken.None);
+            var consume = broker.ConsumeAsync("shipments.main", (_, _, _) => Task.CompletedTask, CancellationToken.None);
+
+            channel.SimulateChannelShutdown();
+            await consume;
 
             var (size, count, global) = Assert.Single(channel.Qos);
             Assert.Equal(0u, size);
@@ -171,8 +178,13 @@ namespace KargoNet.Tracking.Tests.Messaging
             {
                 Consumes.Add((queue, autoAck));
                 Calls.Add("consume");
+                Consumer = consumer;
                 return Task.FromResult(consumerTag);
             }
+
+            /// <summary>Fires the consumer's channel-shutdown callback (simulates a broker-side close).</summary>
+            public void SimulateChannelShutdown()
+                => Consumer?.HandleChannelShutdownAsync(this, new ShutdownEventArgs(ShutdownStyle.Broker, 320, "simulated broker shutdown"));
 
             // --- members the broker does not touch -----------------------------------
 

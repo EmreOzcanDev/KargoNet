@@ -31,6 +31,7 @@ builder.Services.AddScoped<ITrackingCache, RedisTrackingCache>();
 builder.Services.AddSingleton<LazyChannelFactory>();
 builder.Services.AddSingleton<RabbitConsumerBroker>();
 builder.Services.AddSingleton<IConsumerBroker>(sp => sp.GetRequiredService<RabbitConsumerBroker>());
+builder.Services.AddScoped<ShipmentEventHandler>();
 builder.Services.AddScoped<IDlqAdmin, RabbitDlqAdmin>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IShippingUpdateBroadcaster, SignalRShipmentUpdateBroadcaster>();

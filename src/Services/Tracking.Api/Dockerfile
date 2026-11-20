@@ -11,4 +11,4 @@ WORKDIR /app
 COPY --from=sdk /app/publish .
 USER app
 EXPOSE 5002
-ENTRYPOINT ["/app/Tracking.Api.dll"]
+ENTRYPOINT ["dotnet", "/app/Tracking.Api.dll"]
