@@ -51,13 +51,13 @@ export class ShipmentsComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.load();
     this.tracking.start();
-    this.sub = this.tracking.shipmentUpdated.subscribe((dto) => {
+    const updatedSub = this.tracking.shipmentUpdated.subscribe((dto) => {
       if (dto === null) {
         return;
       }
       this.onShipmentUpdated(dto);
     });
-    this.tracking.connectionState.subscribe((state) => {
+    const stateSub = this.tracking.connectionState.subscribe((state) => {
       this.indicator =
         state === 'connected'
           ? { label: 'Live', cls: 'indicator-connected' }
@@ -66,6 +66,9 @@ export class ShipmentsComponent implements OnInit, OnDestroy {
             : { label: 'Offline', cls: 'indicator-disconnected' };
       this.cd.markForCheck();
     });
+    this.sub = new Subscription();
+    this.sub.add(updatedSub);
+    this.sub.add(stateSub);
   }
 
   ngOnDestroy(): void {
