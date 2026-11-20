@@ -12,7 +12,8 @@ public interface IDlqAdmin
     /// Moves every message from the DLQ back to
     /// <c>kargonet.shipments</c> under the <c>shipment</c> routing key (a
     /// fresh delivery with NO <c>x-retry-count</c> header) and returns how
-    /// many were moved.
+    /// many were moved. Honors <paramref name="ct"/>: a cancelled request
+    /// stops the drain before the next message is read.
     /// </summary>
-    Task<int> ReplayAsync();
+    Task<int> ReplayAsync(CancellationToken ct);
 }

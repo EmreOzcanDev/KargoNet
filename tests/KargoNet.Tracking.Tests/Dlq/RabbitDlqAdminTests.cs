@@ -36,7 +36,7 @@ namespace KargoNet.Tracking.Tests.Dlq
             channel.Deliveries = [one, two, three];
             var admin = new RabbitDlqAdmin(new FakeChannelFactory(channel), NullLogger<RabbitDlqAdmin>.Instance);
 
-            var moved = await admin.ReplayAsync();
+            var moved = await admin.ReplayAsync(CancellationToken.None);
 
             Assert.Equal(3, moved);
             Assert.Equal(3, channel.Published.Count);
@@ -60,7 +60,7 @@ namespace KargoNet.Tracking.Tests.Dlq
             var channel = new FakeChannel();
             var admin = new RabbitDlqAdmin(new FakeChannelFactory(channel), NullLogger<RabbitDlqAdmin>.Instance);
 
-            var moved = await admin.ReplayAsync();
+            var moved = await admin.ReplayAsync(CancellationToken.None);
 
             Assert.Equal(0, moved);
             Assert.Empty(channel.Published);

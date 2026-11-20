@@ -31,16 +31,18 @@ public sealed class RabbitDlqAdmin : IDlqAdmin
         return (int)passive.MessageCount;
     }
 
-    public async Task<int> ReplayAsync()
+    public async Task<int> ReplayAsync(CancellationToken ct)
     {
         var channel = await _channelFactory.GetChannelAsync().ConfigureAwait(false);
         var moved = 0;
 
         while (true)
         {
+            ct.ThrowIfCancellationRequested();
+
             // BasicGet with auto-ack: the message leaves the DLQ the moment it
             // is read, so a crash mid-replay loses at most the in-flight body.
-            var delivery = await channel.BasicGetAsync(RabbitTopology.Dlq, autoAck: true).ConfigureAwait(false);
+            var delivery = await channel.BasicGetAsync(RabbitTopology.Dlq, autoAck: true, ct).ConfigureAwait(false);
             if (delivery is null)
                 break;
 

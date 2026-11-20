@@ -66,7 +66,7 @@ namespace KargoNet.Tracking.Tests.Api
         private sealed class FakeDlqAdmin : IDlqAdmin
         {
             public Task<int> CountAsync() => Task.FromResult(7);
-            public Task<int> ReplayAsync() => Task.FromResult(3);
+            public Task<int> ReplayAsync(CancellationToken ct) => Task.FromResult(3);
         }
     }
 }

@@ -19,7 +19,7 @@ public static class DlqEndpoints
             Results.Ok(new { count = await dlq.CountAsync().ConfigureAwait(false) }));
 
         endpoints.MapPost("/api/admin/dlq/replay", async (IDlqAdmin dlq, CancellationToken ct) =>
-            Results.Ok(new { replayed = await dlq.ReplayAsync().ConfigureAwait(false) }));
+            Results.Ok(new { replayed = await dlq.ReplayAsync(ct).ConfigureAwait(false) }));
 
         return endpoints;
     }
