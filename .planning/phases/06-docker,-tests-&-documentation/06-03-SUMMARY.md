@@ -40,7 +40,7 @@ status: complete
 
 # Phase 06 Plan 03: Coverage, Live E2E & README Summary
 
-PLAT-04 test coverage verified (zero new tests needed), full D10 live E2E executed against the real `docker compose up --build` stack (8/8 healthy) with live SignalR observation over the nginx `/hubs/` proxy and a DLQ poison→retry→replay cycle, and the root README written (PLAT-05).
+PLAT-04 test coverage verified (zero new tests needed), full D10 live E2E executed against the real `docker compose up --build` stack (7/7 healthy) with live SignalR observation over the nginx `/hubs/` proxy and a DLQ poison→replay cycle, and the root README written (PLAT-05).
 
 ## Tasks Completed
 
@@ -62,7 +62,7 @@ PLAT-04 test coverage verified (zero new tests needed), full D10 live E2E execut
 
 ## Live E2E Evidence (T2, D10)
 
-**Stack:** `sudo docker compose up --build` → **8/8 services `(healthy)`** (postgres, rabbitmq, redis, shipment-api, tracking-api, portal-web, operator-ui, rabbitmq-management) after `service_healthy` gating.
+**Stack:** `sudo docker compose up --build` → **7/7 services `(healthy)`** (postgres, rabbitmq, redis, shipment-api, tracking-api, portal-web, operator-ui) after `service_healthy` gating.
 
 ### 1. Create shipment via portal (:5000)
 
@@ -126,7 +126,7 @@ After the `RabbitConsumerBroker` fix (below), `shipments.main` shows **exactly 1
 
 - `~/.dotnet/dotnet build` — **0 errors** (8 pre-existing nullability warnings in test fakes, unchanged by this plan).
 - `~/.dotnet/dotnet test` — **90/90 passed, 0 failed** (run in progress at summary write; T1 run at verification was 90/90).
-- `sudo docker compose ps` — **8/8 healthy**.
+- `sudo docker compose ps` — **7/7 healthy**.
 
 ## Files
 
