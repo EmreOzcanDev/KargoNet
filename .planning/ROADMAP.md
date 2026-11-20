@@ -9,7 +9,7 @@
 - [x] **Phase 1: Foundation & Scaffold** - Toolchain installed, solution structured, all projects created (completed 2026-11-19)
 - [x] **Phase 2: Contracts & Messaging** - Event contracts, RabbitMQ topology, publisher with confirms, retry/DLQ consumer base (completed 2026-11-19)
 - [x] **Phase 3: Shipment API** - REST endpoints for shipments with EF Core, outbox pattern, and background publisher (completed 2026-11-20)
-- [ ] **Phase 4: Tracking API** - Event consumer with idempotency, Redis cache-aside, SignalR hub, DLQ admin
+- [x] **Phase 4: Tracking API** - Event consumer with idempotency, Redis cache-aside, SignalR hub, DLQ admin (completed 2026-11-20)
 - [ ] **Phase 5: Web Frontends** - MVC customer portal and Angular operator screen with live updates
 - [ ] **Phase 6: Docker, Tests & Documentation** - Docker Compose stack, xUnit tests, README with demo steps
 
@@ -102,6 +102,6 @@ Plans:
 | 1. Foundation & Scaffold | 3/3 | Complete    | 2026-11-19 |
 | 2. Contracts & Messaging | 4/4 | Complete    | 2026-11-19 |
 | 3. Shipment API | 3/3 | Complete    | 2026-11-20 |
-| 4. Tracking API | 0/? | Not started | - |
+| 4. Tracking API | 3/3 | Complete    | 2026-11-20 |
 | 5. Web Frontends | 0/? | Not started | - |
 | 6. Docker, Tests & Documentation | 0/? | Not started | - |

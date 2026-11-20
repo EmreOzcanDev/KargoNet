@@ -27,11 +27,11 @@
 
 ### Tracking API
 
-- [ ] **TRK-01**: Consumer processes shipment events with idempotency (ProcessedEvents checked by EventId in the same transaction)
-- [ ] **TRK-02**: `GET /api/tracking/{trackingNumber}` returns tracking data with Redis cache-aside (10-min TTL, invalidated on event)
-- [ ] **TRK-03**: SignalR hub broadcasts `ShipmentUpdated` to all connected operators and to a per-tracking-number group
-- [ ] **TRK-04**: `GET /api/admin/dlq` returns dead-letter message count
-- [ ] **TRK-05**: `POST /api/admin/dlq/replay` replays DLQ messages back to the main queue
+- [x] **TRK-01**: Consumer processes shipment events with idempotency (ProcessedEvents checked by EventId in the same transaction)
+- [x] **TRK-02**: `GET /api/tracking/{trackingNumber}` returns tracking data with Redis cache-aside (10-min TTL, invalidated on event)
+- [x] **TRK-03**: SignalR hub broadcasts `ShipmentUpdated` to all connected operators and to a per-tracking-number group
+- [x] **TRK-04**: `GET /api/admin/dlq` returns dead-letter message count
+- [x] **TRK-05**: `POST /api/admin/dlq/replay` replays DLQ messages back to the main queue
 
 ### Messaging Infrastructure
 
@@ -76,11 +76,11 @@
 | SHIP-02 | Phase 3 | Complete |
 | SHIP-03 | Phase 3 | Complete |
 | SHIP-04 | Phase 3 | Complete |
-| TRK-01 | Phase 4 | Pending |
-| TRK-02 | Phase 4 | Pending |
-| TRK-03 | Phase 4 | Pending |
-| TRK-04 | Phase 4 | Pending |
-| TRK-05 | Phase 4 | Pending |
+| TRK-01 | Phase 4 | Complete |
+| TRK-02 | Phase 4 | Complete |
+| TRK-03 | Phase 4 | Complete |
+| TRK-04 | Phase 4 | Complete |
+| TRK-05 | Phase 4 | Complete |
 | MSG-01 | Phase 2 | Complete |
 | MSG-02 | Phase 2 | Complete |
 | MSG-03 | Phase 2 | Complete |

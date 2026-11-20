@@ -16,11 +16,11 @@ Reliable shipment status propagation: a status change made in the operator UI mu
 - ✓ Contracts: ShipmentCreated, ShipmentStatusChanged payload records + ShipmentStatus enum + event envelope — Phase 2
 - ✓ Messaging: RabbitMQ topology (exchange, main/retry 5s-TTL/DLQ queues), publisher with confirms, consumer base with retry and dead-letter logic — Phase 2
 - ✓ Shipment.Api: EF Core model (Shipment, OutboxMessage), InitialCreate migration, REST endpoints (POST/GET/PUT), outbox publisher background service — Phase 3
+- ✓ Tracking.Api: event consumer with idempotency (ProcessedEvents), read model (ShipmentTracking, TrackingEvents), Redis cache-aside, SignalR hub, DLQ admin endpoints — Phase 4
 
 ### Active
 
 - [ ] Toolchain bootstrap: Docker installed and working (.NET 10 SDK validated Phase 1)
-- [ ] Tracking.Api: event consumer with idempotency (ProcessedEvents), read model (ShipmentTracking, TrackingEvents), Redis cache-aside, SignalR hub, DLQ admin endpoints
 - [ ] Portal.Web: MVC customer portal with tracking search, timeline view, create-shipment form
 - [ ] Operator UI: Angular app with shipments table, status-update action, SignalR live updates, timeline detail drawer, nginx proxy
 - [ ] Docker: multi-stage Dockerfiles, docker-compose.yml with healthchecks, Postgres init script, .env
@@ -56,9 +56,9 @@ Reliable shipment status propagation: a status change made in the operator UI mu
 | .NET 10 with EF Core + Npgsql | SDK target from plan; Npgsql is the standard EF provider for PostgreSQL | — Pending |
 | RabbitMQ.Client 7.x async API, hand-built retry/DLQ | Plan requires explicit control over retry count, TTL, and DLQ routing; no middleware abstraction | ✓ Phase 2 |
 | Outbox pattern for reliable publishing | Status change and event row saved in one EF transaction; background publisher polls and publishes with confirms; events survive RabbitMQ downtime | ✓ Phase 3 |
-| Idempotency via ProcessedEvents table | Consumer checks EventId before applying, in the same transaction as the read-model update | — Pending |
-| Redis cache-aside with 10-min TTL | Tracking lookups are read-heavy; cache deleted/overwritten on event consumption | — Pending |
-| SignalR for operator live updates | Real-time push to Angular without polling; broadcasts to all operators + per-tracking-number groups | — Pending |
+| Idempotency via ProcessedEvents table | Consumer checks EventId before applying, in the same transaction as the read-model update | ✓ Phase 4 |
+| Redis cache-aside with 10-min TTL | Tracking lookups are read-heavy; cache deleted/overwritten on event consumption | ✓ Phase 4 |
+| SignalR for operator live updates | Real-time push to Angular without polling; broadcasts to all operators + per-tracking-number groups | ✓ Phase 4 |
 | No authentication | Plan explicitly excludes auth; customers track by number, operator screen is open | — Pending |
 | Docker Compose for all infrastructure | Single-command local dev; healthchecks gate service startup ordering | — Pending |
 | Classic .sln (not .slnx) | .NET 10 defaults to .slnx; plan/ROADMAP pin KargoNet.sln | ✓ Phase 1 |
@@ -82,4 +82,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-20 after Phase 3*
+*Last updated: 2026-11-20 after Phase 4*

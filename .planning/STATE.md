@@ -4,18 +4,18 @@ milestone: v1.0
 milestone_name: KargoNet
 current_plan: Not started
 status: Not started
-stopped_at: Phase 3 complete, ready to plan Phase 4
-last_updated: "2026-11-20T01:08:03.104Z"
-state_head: a48b6aa3adde7d89fa20b32117a1255a1517797a
+stopped_at: Phase 4 complete, ready to plan Phase 5
+last_updated: "2026-11-20T06:38:47.501Z"
+state_head: e46b4c692e834d1e2b4c14cd8ec13b7b3a5ce6a6
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
-  percent: 50
+  completed_phases: 4
+  total_plans: 13
+  completed_plans: 13
+  percent: 67
 last_activity: 2026-11-19
-current_phase: 4
-current_phase_name: Tracking API
+current_phase: 5
+current_phase_name: Web Frontends
 last_activity_desc: STATE.md frontmatter restored
 ---
 
@@ -28,23 +28,23 @@ last_activity_desc: STATE.md frontmatter restored
 - **Roadmap**: See [ROADMAP.md](./ROADMAP.md) for phase structure and success criteria.
 
 **Core value:** Reliable shipment status propagation: a status change made in the operator UI must reach the customer portal and the operator's live view without loss, even when RabbitMQ or individual consumers are temporarily down.
-**Current focus:** Phase 4 — Tracking API
+**Current focus:** Phase 5 — Web Frontends
 
 ## Current Position
 Current Plan: Not started
 Total Plans in Phase: TBD
 
 
-- **Phase**: 4 (Tracking API)
+- **Phase**: 5 (Web Frontends)
 - **Status**: Ready to plan
-- **Last Activity**: 2026-11-20 — Phase 3 complete (verification 4/4 passed), transitioned to Phase 4
+- **Last Activity**: 2026-11-20 — Phase 4 complete (verification 4/4 passed, 78/78 tests), transitioned to Phase 5
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases completed | 3/6 |
-| Requirements validated | 8/25 |
+| Phases completed | 4/6 |
+| Requirements validated | 13/25 |
 **Per-Plan Metrics:**
 
 | Plan | Duration | Tasks | Files |
@@ -59,6 +59,9 @@ Total Plans in Phase: TBD
 | Phase 3 P01 | 40m | 2 tasks | 10 files |
 | Phase 3 P02 | 45m | 2 tasks | 6 files |
 | Phase 3 P03 | 30m | 2 tasks | 6 files |
+| Phase 4 P01 | 95m | 3 tasks | 15 files |
+| Phase 4 P02 | 150m | 3 tasks | 13 files |
+| Phase 4 P03 | 200m | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -77,6 +80,12 @@ Total Plans in Phase: TBD
 - [Phase 3]: OutboxPublisherService: 2 s poll, batch 50, verbatim PayloadJson to routing key shipment, per-row confirm-mark in own transaction, failure leaves Pending (never delete), survives poll DB failures
 - [Phase 3]: LazyOutboxChannelFactory (SemaphoreSlim-guarded) opens the broker channel on first publish — API starts without a reachable broker
 - [Phase 3]: EF Core/Design/InMemory 10.0.15 + Npgsql EF 10.0.3 pinned; tests use Database:Provider config switch (DI-swap routes dead on EF Core 10)
+- [Phase 4]: ShipmentEventsConsumer implements the IConsumerBroker delivery pipeline directly (NOT a ConsumerBase<T> subclass — that seam is single-type), mirroring ConsumerBase's contract exactly (x-retry-count/x-exception headers, RetryPolicy.Decide order, always ack)
+- [Phase 4]: TRK-01 idempotency: one EF transaction — ProcessedEvents marker check -> ShipmentTracking upsert -> TrackingEvent append -> marker insert; DbUpdateException re-checks the marker post-rollback (present = D2 race, success; absent = rethrow -> retry -> DLQ); stale-event guard never regresses an existing row (review WR-06)
+- [Phase 4]: Redis cache-aside: key tracking:{number-lower}, 10-min TTL, delete post-commit; GET degrades to EF on cache failure (WR-04); timeline endpoint uncached; StackExchange.Redis pinned 2.13.23 (latest stable 2.x)
+- [Phase 4]: SignalR TrackingHub at /hubs/tracking with Join/Leave tracking-number groups; ShipmentUpdated broadcast to Clients.All + group via scoped IShippingUpdateBroadcaster (IHubContext seam)
+- [Phase 4]: RabbitConsumerBroker implements the frozen IConsumerBroker and gains ConsumeAsync as a class member; LazyChannelFactory uses per-operation channels (channel not thread-safe); BasicQos prefetch 10; hosted consume loop retries on 2 s, host never dies
+- [Phase 4]: DLQ admin: passive-declare count + drain-and-republish verbatim to shipment routing key with NO x-retry-count, cancellable, per-op channel
 
 ### Todos
 - (none yet)
@@ -88,8 +97,7 @@ Total Plans in Phase: TBD
 ## Session Continuity
 
 Last session: 2026-11-20T23:30:00Z
-Stopped at: Phase 3 complete, ready to plan Phase 4
+Stopped at: Phase 4 complete, ready to plan Phase 5
 Resume file: None
 
----
-*Last updated: 2026-11-20 after Phase 3*
+*Last updated: 2026-11-20 after Phase 4*
