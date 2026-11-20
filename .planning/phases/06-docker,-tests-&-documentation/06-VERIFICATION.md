@@ -33,7 +33,7 @@ covered_files:
   - "tests/KargoNet.Tracking.Tests/Dlq/RabbitDlqAdminTests.cs"
   - "tests/KargoNet.Tracking.Tests/Messaging/LazyChannelFactoryTests.cs"
   - "tests/KargoNet.Tracking.Tests/Messaging/RabbitConsumerBrokerTests.cs"
-covered_digest: "v4:sha256:cfef60546f197c73e124c9588dcdd5e1b3ebc58f34ce716299c9aa158f4faff8"
+covered_digest: "v4:sha256:7d0a2cbf596e75588a68476f9961022e86087652688a8149d1e823fe110d146c"
 ---
 # Phase 6: Docker, Tests & Documentation — Verification Report
 
