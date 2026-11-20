@@ -103,6 +103,22 @@ namespace KargoNet.Tracking.Tests.Messaging
             Assert.Equal(["qos", "consume"], channel.Calls);
         }
 
+        [Fact]
+        public async Task ConsumeAsync_cancels_when_the_caller_token_is_cancelled()
+        {
+            var channel = new FakeChannel();
+            var broker = CreateBroker(channel);
+            using var cts = new CancellationTokenSource();
+
+            var consume = broker.ConsumeAsync("shipments.main", (_, _, _) => Task.CompletedTask, cts.Token);
+
+            // Host-shutdown path: the channel never shuts down — only the
+            // caller's token is cancelled.
+            cts.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => consume);
+        }
+
         private static RabbitConsumerBroker CreateBroker(FakeChannel channel)
             => new(new FakeChannelFactory(channel), NullLogger<RabbitConsumerBroker>.Instance);
 
@@ -168,8 +184,8 @@ namespace KargoNet.Tracking.Tests.Messaging
                 where TProperties : IReadOnlyBasicProperties, IAmqpHeader
                 => throw new NotImplementedException();
 
-            public Task<BasicGetResult> BasicGetAsync(string queue, bool autoAck, CancellationToken cancellationToken = default)
-                => Task.FromException<BasicGetResult>(new NotImplementedException());
+            public Task<BasicGetResult?> BasicGetAsync(string queue, bool autoAck, CancellationToken cancellationToken = default)
+                => Task.FromException<BasicGetResult?>(new NotImplementedException());
 
             public Task<QueueDeclareOk> QueueDeclarePassiveAsync(string queue, CancellationToken cancellationToken = default)
                 => Task.FromException<QueueDeclareOk>(new NotImplementedException());
@@ -184,7 +200,7 @@ namespace KargoNet.Tracking.Tests.Messaging
 
             /// <summary>Fires the consumer's channel-shutdown callback (simulates a broker-side close).</summary>
             public void SimulateChannelShutdown()
-                => Consumer?.HandleChannelShutdownAsync(this, new ShutdownEventArgs(ShutdownStyle.Broker, 320, "simulated broker shutdown"));
+                => Consumer?.HandleChannelShutdownAsync(this, new ShutdownEventArgs(ShutdownInitiator.Peer, 320, "simulated broker shutdown"));
 
             // --- members the broker does not touch -----------------------------------
 
@@ -278,6 +294,7 @@ namespace KargoNet.Tracking.Tests.Messaging
             public bool IsClosed => false;
             public bool IsOpen => true;
             public string CurrentQueue => string.Empty;
+            public IAsyncBasicConsumer? Consumer { get; private set; }
             public TimeSpan ContinuationTimeout { get; set; }
 
             // --- events ---------------------------------------------------------------

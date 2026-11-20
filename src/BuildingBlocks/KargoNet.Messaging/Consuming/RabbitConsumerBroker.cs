@@ -98,6 +98,13 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
             arguments: null,
             consumer,
             ct).ConfigureAwait(false);
+        // Link the shutdown TCS to the caller's token: a host shutdown while
+        // the channel is still healthy (the normal compose stop path) must
+        // end ConsumeAsync — without this the TCS never completes and the
+        // consume blocks until the host is force-killed. The await below
+        // then throws OperationCanceledException, which the caller's retry
+        // loop already handles (it breaks out and stops the service).
+        using var cancellation = ct.Register(() => channelShutdown.TrySetCanceled());
 
         // Block until the channel is shut down so the caller's retry loop
         // only re-subscribes after a real failure. Returning immediately
