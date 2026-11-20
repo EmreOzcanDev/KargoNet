@@ -107,6 +107,7 @@ export class TimelineDrawerComponent implements OnDestroy {
     }
     this._trackingNumber = n;
     this.tracking.joinGroup(n);
+    this.sub?.unsubscribe();
     this.sub = this.tracking.shipmentUpdated.subscribe((dto) => {
       if (dto !== null && dto.trackingNumber === n) {
         this.load();
