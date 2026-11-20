@@ -11,7 +11,7 @@
 - [x] **Phase 3: Shipment API** - REST endpoints for shipments with EF Core, outbox pattern, and background publisher (completed 2026-11-20)
 - [x] **Phase 4: Tracking API** - Event consumer with idempotency, Redis cache-aside, SignalR hub, DLQ admin (completed 2026-11-20)
 - [x] **Phase 5: Web Frontends** - MVC customer portal and Angular operator screen with live updates (completed 2026-11-20)
-- [ ] **Phase 6: Docker, Tests & Documentation** - Docker Compose stack, xUnit tests, README with demo steps
+- [x] **Phase 6: Docker, Tests & Documentation** - Docker Compose stack, xUnit tests, README with demo steps (completed 2026-11-20)
 
 ## Phase Details
 
@@ -104,4 +104,4 @@ Plans:
 | 3. Shipment API | 3/3 | Complete    | 2026-11-20 |
 | 4. Tracking API | 3/3 | Complete    | 2026-11-20 |
 | 5. Web Frontends | 2/2 | Complete    | 2026-11-20 |
-| 6. Docker, Tests & Documentation | 0/? | Not started | - |
+| 6. Docker, Tests & Documentation | 3/3 | Complete    | 2026-11-20 |
