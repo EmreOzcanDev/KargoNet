@@ -6,6 +6,7 @@ using KargoNet.Contracts.Models;
 using KargoNet.Shipment.Api.Data;
 using KargoNet.Shipment.Api.Dto;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace KargoNet.Shipment.Api.Endpoints
 {
@@ -37,6 +38,11 @@ namespace KargoNet.Shipment.Api.Endpoints
             var trackingNumber = request.TrackingNumber?.Trim() ?? string.Empty;
             var description = request.Description;
             var destination = request.Destination?.Trim() ?? string.Empty;
+
+            // Column lengths (varchar(64) / varchar(256)): over-long input is a
+            // client error (400), not a unique-violation backstop (409).
+            if (trackingNumber.Length == 0 || trackingNumber.Length > 64 || destination.Length > 256)
+                return Results.BadRequest();
 
             // InMemory tests cannot rely on the unique index; the pre-check is
             // the testable 409 path. A DbUpdateException on save stays as the
@@ -79,8 +85,10 @@ namespace KargoNet.Shipment.Api.Endpoints
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
             {
+                // Unique-constraint violation only (SqlState 23505). Any other
+                // database failure is not a duplicate — let it surface.
                 return Results.Conflict();
             }
 

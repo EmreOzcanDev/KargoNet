@@ -108,6 +108,44 @@ namespace KargoNet.Tracking.Tests.Api
         }
 
         [Fact]
+        public async Task Create_shipment_with_empty_or_whitespace_tracking_number_returns_400()
+        {
+            var client = _factory.CreateClient();
+
+            var missing = await client.PostAsJsonAsync("/api/shipments", new CreateShipmentRequest(null, null, "Izmir"));
+            Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
+
+            var blank = await client.PostAsJsonAsync("/api/shipments", new CreateShipmentRequest("   ", null, "Izmir"));
+            Assert.Equal(HttpStatusCode.BadRequest, blank.StatusCode);
+
+            await using var scope = _factory.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<ShipmentDbContext>();
+            Assert.Equal(0, await db.Shipments.CountAsync()); // nothing persisted
+        }
+
+        [Fact]
+        public async Task Create_shipment_with_over_long_tracking_number_or_destination_returns_400()
+        {
+            var client = _factory.CreateClient();
+
+            // varchar(64) / varchar(256): over-long input is a client error,
+            // NOT a 409 unique-violation backstop.
+            var longTrackingNumber = await client.PostAsJsonAsync(
+                "/api/shipments",
+                new CreateShipmentRequest(new string('X', 65), null, "Izmir"));
+            Assert.Equal(HttpStatusCode.BadRequest, longTrackingNumber.StatusCode);
+
+            var longDestination = await client.PostAsJsonAsync(
+                "/api/shipments",
+                new CreateShipmentRequest("TRK-LONG", null, new string('X', 257)));
+            Assert.Equal(HttpStatusCode.BadRequest, longDestination.StatusCode);
+
+            await using var scope = _factory.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<ShipmentDbContext>();
+            Assert.Equal(0, await db.Shipments.CountAsync()); // nothing persisted
+        }
+
+        [Fact]
         public async Task List_shipments_returns_shipments_ordered_by_created_at()
         {
             var client = _factory.CreateClient();
