@@ -1,6 +1,7 @@
 <div class="page-container">
   <header class="page-header">
     <h1 class="page-title">KargoNet Operator</h1>
+    <span class="indicator {{ indicator.cls }}">{{ indicator.label }}</span>
   </header>
 
   @if (state === 'loading') {
@@ -27,10 +28,11 @@
           <th scope="col">Destination</th>
           <th scope="col">Status</th>
           <th scope="col">Updated</th>
+          <th scope="col">Actions</th>
         </tr>
       </thead>
       <tbody>
-        @for (row of shipments; track row.id) {
+        @for (row of shipments; track row.trackingNumber) {
           <tr>
             <td>{{ row.trackingNumber }}</td>
             <td>{{ row.description || '—' }}</td>
@@ -39,6 +41,28 @@
               <span class="badge" [class]="badgeClass[row.status]">{{ row.status }}</span>
             </td>
             <td>{{ formatUpdated(row.updatedAt) }}</td>
+            <td>
+              <div class="row-actions">
+                <select
+                  [value]="selectFor(row)"
+                  [disabled]="meta(row.trackingNumber).selectDisabled"
+                  (change)="onStatusSelect(row, $event)">
+                  @for (opt of statusOptions; track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+                <button
+                  type="button"
+                  class="btn-primary"
+                  [disabled]="meta(row.trackingNumber).selectDisabled"
+                  (click)="applyStatus(row)">
+                  Apply
+                </button>
+              </div>
+              @if (meta(row.trackingNumber).applyError) {
+                <p class="row-error">Couldn't update status — try again.</p>
+              }
+            </td>
           </tr>
         }
       </tbody>
