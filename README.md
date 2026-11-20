@@ -41,7 +41,7 @@ Key mechanics:
 docker compose up --build
 ```
 
-All 8 services start with health-gated ordering. When every service reports `healthy`:
+All 7 services start with health-gated ordering. When every service reports `healthy`:
 
 | Service | Host port | What it is |
 |---|---|---|
