@@ -1,6 +1,8 @@
 using KargoNet.Contracts.Models;
+using KargoNet.Messaging.Publishing;
 using KargoNet.Shipment.Api.Data;
 using KargoNet.Shipment.Api.Endpoints;
+using KargoNet.Shipment.Api.Publishing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
@@ -17,6 +19,10 @@ builder.Services.AddDbContext<ShipmentDbContext>(options =>
     else
         options.UseNpgsql(builder.Configuration.GetConnectionString("ShipmentDb"));
 });
+
+builder.Services.AddSingleton<IOutboxChannel, LazyOutboxChannelFactory>();
+builder.Services.AddSingleton<MessagePublisher>();
+builder.Services.AddHostedService<OutboxPublisherService>();
 
 var app = builder.Build();
 
