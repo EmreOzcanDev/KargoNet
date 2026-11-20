@@ -51,8 +51,12 @@ if (!useInMemory)
                 .Database.MigrateAsync();
             break;
         }
-        catch (Exception) when (attempt < 10)
+        catch (Exception exception) when (attempt < 10)
         {
+            app.Logger.LogWarning(
+                "[migrations] attempt {Attempt} of 10 failed: {Message}",
+                attempt,
+                exception.Message);
             await Task.Delay(TimeSpan.FromSeconds(3));
         }
     }
