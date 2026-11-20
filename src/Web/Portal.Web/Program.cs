@@ -1,7 +1,11 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Portal API client against the frozen Shipment + Tracking services.
+builder.Services.AddSingleton<Portal.Web.Services.IPortalApiClient>(_ => new Portal.Web.Services.PortalApiClient(
+    new Uri(builder.Configuration["ShipmentApiUrl"]!),
+    new Uri(builder.Configuration["TrackingApiUrl"]!)));
 
 var app = builder.Build();
 
@@ -13,7 +17,6 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthorization();

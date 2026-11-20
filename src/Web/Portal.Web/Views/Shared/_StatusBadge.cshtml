@@ -1,0 +1,15 @@
+@model string
+@{
+    var variant = Model switch
+    {
+        "Created" => "bg-light text-secondary border",
+        "PickedUp" => "bg-secondary",
+        "InTransit" => "bg-primary",
+        "AtHub" => "bg-warning text-dark",
+        "OutForDelivery" => "bg-info text-dark",
+        "Delivered" => "bg-success",
+        "Exception" => "bg-danger",
+        _ => "bg-light text-secondary border"
+    };
+}
+<span class="badge @variant">@Model</span>

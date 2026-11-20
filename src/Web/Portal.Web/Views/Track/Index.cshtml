@@ -1,0 +1,87 @@
+@model Portal.Web.Models.TrackingViewModel
+@{
+    ViewData["Title"] = Model.TrackingNumber is null ? "Track" : Model.TrackingNumber;
+}
+
+@if (Model.State == TrackState.Error)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (Model.State == TrackState.Empty)
+{
+    <div class="card mx-auto" style="max-width: 560px; margin-top: 64px;">
+        <div class="card-body">
+            <h2 class="page-title">Enter a tracking number</h2>
+            <p>Look up a shipment using the tracking number from your confirmation.</p>
+        </div>
+    </div>
+}
+else if (Model.State == TrackState.NotFound)
+{
+    <div class="alert alert-danger" role="alert" style="max-width: 560px; margin: 64px auto;">
+        <h4 class="alert-heading">No shipment found for @Model.TrackingNumber</h4>
+        <p>Check the tracking number and try again.</p>
+        <a asp-controller="Home" asp-action="Index">Back to home</a>
+    </div>
+}
+else if (Model.State == TrackState.Found)
+{
+    <div class="card" style="max-width: 720px;">
+        <div class="card-header">
+            <a href="/track?number=@Uri.EscapeDataString(Model.TrackingNumber!)">@Model.TrackingNumber</a>
+        </div>
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Description</dt>
+                <dd class="col-sm-9 mb-2">@Model.Description</dd>
+                <dt class="col-sm-3">Destination</dt>
+                <dd class="col-sm-9 mb-2">@Model.Destination</dd>
+                <dt class="col-sm-3">Status</dt>
+                <dd class="col-sm-9 mb-2"><partial name="_StatusBadge" model="Model.Status" /></dd>
+                <dt class="col-sm-3">Created</dt>
+                <dd class="col-sm-9 mb-2">@Model.Created</dd>
+                <dt class="col-sm-3">Updated</dt>
+                <dd class="col-sm-9">@Model.Updated</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card mt-5" style="margin-top: 48px;">
+        <div class="card-header" style="background-color: #f8f9fa;">Timeline</div>
+        <div class="card-body">
+            @if (Model.TimelineError is not null)
+            {
+                <p class="mb-0">@Model.TimelineError</p>
+            }
+            else if (Model.Timeline.Count == 0)
+            {
+                <p class="mb-0">No events yet — events will appear as the shipment progresses.</p>
+            }
+            else
+            {
+                @foreach (var item in Model.Timeline)
+                {
+                    <div style="display: flex; align-items: center; gap: 16px; padding: 12px 0;">
+                        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background-color: #258cfb; flex: none;"></span>
+                        <div style="flex: 1;">
+                            <div>@item.Label</div>
+                            @if (item.SubLine is not null)
+                            {
+                                <div class="text-muted small">@item.SubLine</div>
+                            }
+                        </div>
+                        @if (item.Status is not null)
+                        {
+                            <partial name="_StatusBadge" model="item.Status" />
+                        }
+                        <span class="text-muted">@item.OccurredAt</span>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+}
