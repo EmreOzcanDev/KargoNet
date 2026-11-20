@@ -13,6 +13,7 @@ namespace KargoNet.Messaging.Publishing;
 public sealed class LazyOutboxChannelFactory : IOutboxChannel
 {
     private readonly IConfiguration _configuration;
+    private readonly SemaphoreSlim _openLock = new(1, 1);
     private RabbitOutboxChannel? _channel;
 
     public LazyOutboxChannelFactory(IConfiguration configuration)
@@ -20,9 +21,23 @@ public sealed class LazyOutboxChannelFactory : IOutboxChannel
 
     public async Task<PublishOutcome> PublishAsync(string exchange, string routingKey, ReadOnlyMemory<byte> body, IDictionary<string, object?>? headers)
     {
-        var channel = _channel ?? await OpenChannelAsync().ConfigureAwait(false);
-        _channel = channel;
-        return await channel.PublishAsync(exchange, routingKey, body, headers).ConfigureAwait(false);
+        // Guard the check-then-act across the await: concurrent first publishes
+        // must open exactly one connection/channel (the loser re-checks _channel
+        // under the lock instead of leaking its own).
+        if (_channel is null)
+        {
+            await _openLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                _channel ??= await OpenChannelAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                _openLock.Release();
+            }
+        }
+
+        return await _channel.PublishAsync(exchange, routingKey, body, headers).ConfigureAwait(false);
     }
 
     private async Task<RabbitOutboxChannel> OpenChannelAsync()
