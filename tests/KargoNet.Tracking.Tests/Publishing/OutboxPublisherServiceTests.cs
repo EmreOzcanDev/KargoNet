@@ -137,4 +137,110 @@ public class OutboxPublisherServiceTests
             .ToHashSet();
         Assert.Equal(50, publishedIds.Count);
     }
+
+    private sealed class ScriptedOutboxChannel : IOutboxChannel
+    {
+        private readonly Func<int, PublishOutcome> _script;
+        public List<PublishCall> Calls { get; } = [];
+
+        public ScriptedOutboxChannel(Func<int, PublishOutcome> script)
+            => _script = script;
+
+        public Task<PublishOutcome> PublishAsync(string exchange, string routingKey, ReadOnlyMemory<byte> body, IDictionary<string, object?>? headers)
+        {
+            var outcome = _script(Calls.Count);
+            Calls.Add(new PublishCall(exchange, routingKey, body.ToArray()));
+            return Task.FromResult(outcome);
+        }
+    }
+
+    [Fact]
+    public async Task FailedFirstRow_DoesNotDetachRemainingRows_TheyAreMarkedPublished()
+    {
+        var options = new DbContextOptionsBuilder<ShipmentDbContext>()
+            .UseInMemoryDatabase("outbox-test-cr01")
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        var db = new ShipmentDbContext(options);
+        var channel = new ScriptedOutboxChannel(i => i == 0
+            ? new PublishOutcome(false, 7)   // first row's publish is unconfirmed
+            : new PublishOutcome(true, 1));
+        var service = new OutboxPublisherService(db, new MessagePublisher(channel), NullLogger<OutboxPublisherService>.Instance);
+
+        var baseTime = new DateTimeOffset(2026, 11, 19, 10, 0, 0, TimeSpan.Zero);
+        var rows = Enumerable.Range(0, 3).Select(i => CreateRow(baseTime.AddSeconds(i))).ToList();
+        db.Set<OutboxMessage>().AddRange(rows);
+        await db.SaveChangesAsync();
+
+        var published = await service.PollOnceAsync(CancellationToken.None);
+
+        // Row 1 stays Pending; rows 2-3 were confirmed AND their Published
+        // marks persisted (no ChangeTracker.Clear() detach of the batch).
+        Assert.Equal(2, published);
+        Assert.Equal(3, channel.Calls.Count);
+
+        var savedRows = await db.Set<OutboxMessage>().ToListAsync();
+        Assert.Equal(OutboxStatus.Pending, savedRows.Single(r => r.Id == rows[0].Id).Status);
+        foreach (var row in rows.Skip(1))
+        {
+            var saved = savedRows.Single(r => r.Id == row.Id);
+            Assert.Equal(OutboxStatus.Published, saved.Status);
+            Assert.NotNull(saved.PublishedAt);
+        }
+    }
+
+    private sealed class FailingShipmentDbContext : ShipmentDbContext
+    {
+        public int PollAttempts;
+
+        public FailingShipmentDbContext(string databaseName)
+            : base(new DbContextOptionsBuilder<ShipmentDbContext>()
+                .UseInMemoryDatabase(databaseName)
+                .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+                .Options)
+        {
+        }
+
+        public override DbSet<T> Set<T>()
+        {
+            PollAttempts++;
+            throw new InvalidOperationException("simulated database failure");
+        }
+    }
+
+    [Fact]
+    public async Task PollFailure_DoesNotTerminateHostLoop_RetriesNextInterval()
+    {
+        var db = new FailingShipmentDbContext("outbox-test-loop");
+        var service = new OutboxPublisherService(
+            db,
+            new MessagePublisher(new FakeOutboxChannel(new PublishOutcome(true, 1))),
+            NullLogger<OutboxPublisherService>.Instance);
+
+        var execute = typeof(OutboxPublisherService)
+            .GetMethod("ExecuteAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        using var cts = new CancellationTokenSource();
+        var executeTask = (Task)execute.Invoke(service, [cts.Token])!;
+
+        // One failed poll, then the 2 s delay, then a second (failed) poll —
+        // the loop must still be alive after a database failure.
+        await Task.Delay(2400);
+        Assert.True(db.PollAttempts >= 2, $"expected at least 2 poll attempts after a failure, got {db.PollAttempts}");
+
+        cts.Cancel();
+        var completion = await Task.WhenAny(executeTask, Task.Delay(TimeSpan.FromSeconds(10)));
+        Assert.Same(executeTask, completion);
+        try
+        {
+            await executeTask;
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation of the shutdown delay — graceful.
+        }
+
+        var attemptsAtShutdown = db.PollAttempts;
+        await Task.Delay(500);
+        Assert.Equal(attemptsAtShutdown, db.PollAttempts); // loop stopped, no runaway
+    }
 }

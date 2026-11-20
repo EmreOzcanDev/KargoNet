@@ -78,8 +78,10 @@ public class OutboxPublisherService : BackgroundService
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // Leave the row Pending for the next poll; never delete.
-                _db.ChangeTracker.Clear();
+                // Leave the row Pending for the next poll; never delete. No
+                // ChangeTracker.Clear() here: clearing the whole tracker would
+                // detach the remaining rows in this batch, so their Published
+                // marks could never persist (duplicate delivery on retry).
                 _logger.LogWarning(ex, "Outbox publish failed for row {RowId}; leaving Pending for retry.", row.Id);
             }
         }
@@ -98,6 +100,13 @@ public class OutboxPublisherService : BackgroundService
             catch (OperationCanceledException)
             {
                 break;
+            }
+            catch (Exception ex)
+            {
+                // A database failure (Postgres unreachable/restarting) must not
+                // escape ExecuteAsync — that would stop the host and take the
+                // REST API down with it. Log and retry next interval.
+                _logger.LogError(ex, "Outbox poll failed; retrying next interval.");
             }
 
             await Task.Delay(PollInterval, stoppingToken);
