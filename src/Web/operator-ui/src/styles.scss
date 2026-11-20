@@ -243,14 +243,6 @@ table.shipments-table {
   color: var(--color-danger);
 }
 
-select.row-select {
-  font-size: 16px;
-  padding: var(--sp-xs) var(--sp-sm);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  margin-right: var(--sp-sm);
-}
-
 /* Timeline drawer (O2) */
 .drawer-backdrop {
   position: fixed;
@@ -280,21 +272,6 @@ select.row-select {
   padding: var(--sp-md);
   background: #f8f9fa;
   border-bottom: 1px solid var(--color-border);
-}
-
-.drawer-header .drawer-number {
-  font-weight: 600;
-  word-break: break-word;
-}
-
-.drawer-header .close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--color-muted);
-  padding: 0;
 }
 
 .drawer-body {
