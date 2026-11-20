@@ -14,13 +14,13 @@ export class ShipmentApiService {
 
   getShipment(trackingNumber: string): Observable<ShipmentDto> {
     return this.http.get<ShipmentDto>(
-      `${environment.shipmentApiUrl}/api/shipments/${trackingNumber}`
+      `${environment.shipmentApiUrl}/api/shipments/${encodeURIComponent(trackingNumber)}`
     );
   }
 
   updateStatus(id: string, status: string): Observable<ShipmentDto> {
     return this.http.put<ShipmentDto>(
-      `${environment.shipmentApiUrl}/api/shipments/${id}/status`,
+      `${environment.shipmentApiUrl}/api/shipments/${encodeURIComponent(id)}/status`,
       { status }
     );
   }

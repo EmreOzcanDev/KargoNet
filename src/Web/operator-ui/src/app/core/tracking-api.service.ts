@@ -10,7 +10,7 @@ export class TrackingApiService {
 
   getTimeline(trackingNumber: string): Observable<TrackingEvent[]> {
     return this.http.get<TrackingEvent[]>(
-      `${environment.trackingApiUrl}/api/tracking/${trackingNumber}/events`
+      `${environment.trackingApiUrl}/api/tracking/${encodeURIComponent(trackingNumber)}/events`
     );
   }
 }
