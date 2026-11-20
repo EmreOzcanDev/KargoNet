@@ -1,0 +1,2 @@
+CREATE DATABASE shipments;
+CREATE DATABASE tracking;

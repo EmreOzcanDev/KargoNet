@@ -38,6 +38,25 @@ builder.Services.AddHostedService<ShipmentEventsConsumer>();
 
 var app = builder.Build();
 
+if (!useInMemory)
+{
+    for (var attempt = 1; attempt <= 10; attempt++)
+    {
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            await scope.ServiceProvider
+                .GetRequiredService<TrackingDbContext>()
+                .Database.MigrateAsync();
+            break;
+        }
+        catch (Exception) when (attempt < 10)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3));
+        }
+    }
+}
+
 app.MapGet("/health", () => Results.Ok(new
 {
     status = "healthy",

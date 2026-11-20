@@ -1,0 +1,11 @@
+.git
+.planning
+bin
+obj
+node_modules
+.angular
+tests
+*.user
+*.swp
+*.swo
+.env
