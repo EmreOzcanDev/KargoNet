@@ -3,6 +3,7 @@ using KargoNet.Tracking.Api.Entities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using KargoNet.Tracking.Api.Tracking;
 
 namespace KargoNet.Tracking.Api.Endpoints;
@@ -28,9 +29,26 @@ public static class TrackingEndpoints
             string trackingNumber,
             ITrackingCache cache,
             TrackingDbContext db,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
-            var cached = await cache.GetAsync(trackingNumber, ct).ConfigureAwait(false);
+            var logger = loggerFactory.CreateLogger("KargoNet.Tracking.Api.Endpoints");
+            // The cache is a performance optimization, not a dependency: on
+            // a cache failure, degrade to a direct EF read (the row is the
+            // source of truth) instead of failing the request.
+            TrackingUpdatedDto? cached = null;
+            try
+            {
+                cached = await cache.GetAsync(trackingNumber, ct).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(
+                    exception,
+                    "Cache read for {TrackingNumber} failed; falling back to EF.",
+                    trackingNumber);
+            }
+
             if (cached is not null)
                 return Results.Ok(ToDto(cached));
 
@@ -42,7 +60,19 @@ public static class TrackingEndpoints
                 return Results.NotFound();
 
             var dto = ToDto(row);
-            await cache.SetAsync(ToUpdated(dto), CacheTtl, ct).ConfigureAwait(false);
+            try
+            {
+                await cache.SetAsync(ToUpdated(dto), CacheTtl, ct).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                // Repopulation failure must not fail the read: return the EF
+                // data and let the next read retry the write.
+                logger.LogWarning(
+                    exception,
+                    "Cache repopulation for {TrackingNumber} failed; returning EF data.",
+                    trackingNumber);
+            }
             return Results.Ok(dto);
         });
 

@@ -25,7 +25,20 @@ public sealed class RedisTrackingCache : ITrackingCache
     {
         var db = (await _connections.GetAsync().ConfigureAwait(false)).GetDatabase();
         var value = await db.StringGetAsync(Key(trackingNumber)).ConfigureAwait(false);
-        return value.IsNull ? null : JsonSerializer.Deserialize<TrackingUpdatedDto>(value.ToString(), Options);
+        if (value.IsNull)
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<TrackingUpdatedDto>(value.ToString(), Options);
+        }
+        catch (JsonException)
+        {
+            // Corrupt payload: drop the key so the next read repopulates
+            // from EF instead of failing on the same value forever.
+            await db.KeyDeleteAsync(Key(trackingNumber)).ConfigureAwait(false);
+            return null;
+        }
     }
 
     public async Task SetAsync(TrackingUpdatedDto dto, TimeSpan ttl, CancellationToken ct)

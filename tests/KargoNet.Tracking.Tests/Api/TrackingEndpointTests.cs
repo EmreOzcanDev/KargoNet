@@ -74,6 +74,25 @@ namespace KargoNet.Tracking.Tests.Api
         }
     }
 
+    /// <summary>
+    /// An <see cref="ITrackingCache"/> that always fails, simulating an
+    /// unreachable Redis for the degrade-to-EF test.
+    /// </summary>
+    public sealed class FailingTrackingCache : ITrackingCache
+    {
+        private static readonly Exception Failure =
+            new InvalidOperationException("simulated Redis outage");
+
+        public Task<TrackingUpdatedDto?> GetAsync(string trackingNumber, CancellationToken ct)
+            => Task.FromException<TrackingUpdatedDto?>(Failure);
+
+        public Task SetAsync(TrackingUpdatedDto dto, TimeSpan ttl, CancellationToken ct)
+            => Task.FromException(Failure);
+
+        public Task DeleteAsync(string trackingNumber, CancellationToken ct)
+            => Task.FromException(Failure);
+    }
+
     public class TrackingEndpointTests
     {
         private static readonly DateTimeOffset CreatedAt = new(2026, 11, 1, 9, 0, 0, TimeSpan.Zero);
@@ -89,14 +108,13 @@ namespace KargoNet.Tracking.Tests.Api
             _cache = (FakeTrackingCache)_factory.Services.GetRequiredService<ITrackingCache>();
         }
 
-        private async Task<TrackingDbContext> SeedAsync(params object[] rows)
+        private async Task SeedAsync(params object[] rows)
         {
             using var scope = _factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<TrackingDbContext>();
             db.ChangeTracker.Clear();
             db.AddRange(rows);
             await db.SaveChangesAsync();
-            return db;
         }
 
         [Fact]
@@ -174,6 +192,39 @@ namespace KargoNet.Tracking.Tests.Api
         }
 
         [Fact]
+        public async Task Get_degrades_to_EF_when_the_cache_fails()
+        {
+            var databaseName = Guid.NewGuid().ToString("N");
+            var factory = new FailingCacheApiFactory(databaseName);
+
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<TrackingDbContext>();
+                db.AddRange(new ShipmentTracking
+                {
+                    TrackingNumber = "TRK-FAIL",
+                    Description = "Fallback",
+                    Destination = "Izmir",
+                    Status = "Created",
+                    CreatedAt = CreatedAt,
+                    UpdatedAt = UpdatedAt,
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var client = factory.CreateClient();
+            var response = await client.GetAsync("/api/tracking/TRK-FAIL");
+
+            // Both cache calls (read + warm) throw; the request must still
+            // succeed from the EF row.
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var dto = await response.Content.ReadFromJsonAsync<TrackingDto>();
+            Assert.Equal("TRK-FAIL", dto!.trackingNumber);
+            Assert.Equal("Fallback", dto.description);
+            Assert.Equal("Izmir", dto.destination);
+        }
+
+        [Fact]
         public async Task Events_endpoint_returns_timeline_ordered_by_occurred_at()
         {
             // Seed OUT of order: the API must return them in OccurredAt order.
@@ -212,6 +263,31 @@ namespace KargoNet.Tracking.Tests.Api
             Assert.Equal("shipment.status.changed", timeline[1].GetProperty("eventType").GetString());
             Assert.True(timeline[0].GetProperty("occurredAt").GetDateTimeOffset()
                 < timeline[1].GetProperty("occurredAt").GetDateTimeOffset());
+        }
+
+        /// <summary>
+        /// The <see cref="TrackingApiFactory"/> host with an always-failing
+        /// <see cref="ITrackingCache"/>, proving the read path degrades to EF.
+        /// </summary>
+        private sealed class FailingCacheApiFactory : WebApplicationFactory<TestEntryPoint>
+        {
+            private readonly string _databaseName;
+
+            public FailingCacheApiFactory(string databaseName)
+                => _databaseName = databaseName;
+
+            protected override void ConfigureWebHost(IWebHostBuilder builder)
+            {
+                builder.UseEnvironment($"testing-{_databaseName}");
+                builder.UseSetting("Database:Provider", "InMemory");
+                builder.UseSetting("Database:Name", _databaseName);
+
+                builder.ConfigureServices(services =>
+                {
+                    services.RemoveAll<ITrackingCache>();
+                    services.AddSingleton<ITrackingCache>(new FailingTrackingCache());
+                });
+            }
         }
     }
 }
