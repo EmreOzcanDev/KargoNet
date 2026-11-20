@@ -9,6 +9,7 @@ import { Subscription } from 'rxjs';
 import { ShipmentApiService } from '../core/shipment-api.service';
 import { TrackingService } from '../core/tracking.service';
 import { ShipmentDto, TrackingUpdatedDto } from '../core/models';
+import { TimelineDrawerComponent } from './timeline-drawer';
 import { STATUS_BADGE_CLASS, STATUS_OPTIONS } from '../core/statuses';
 
 type ListState = 'loading' | 'empty' | 'error' | 'populated';
@@ -21,7 +22,7 @@ interface RowMeta {
 
 @Component({
   selector: 'app-shipments',
-  imports: [CommonModule],
+  imports: [CommonModule, TimelineDrawerComponent],
   templateUrl: './shipments.html',
   styleUrl: './shipments.scss'
 })
@@ -31,6 +32,7 @@ export class ShipmentsComponent implements OnInit, OnDestroy {
   readonly statusOptions = STATUS_OPTIONS;
   readonly badgeClass = STATUS_BADGE_CLASS;
   indicator = { label: 'Offline', cls: 'indicator-disconnected' };
+  openNumber: string | null = null;
 
   private rowMeta = new Map<string, RowMeta>();
   private sub: Subscription | null = null;
@@ -40,6 +42,11 @@ export class ShipmentsComponent implements OnInit, OnDestroy {
     private readonly tracking: TrackingService,
     private readonly cd: ChangeDetectorRef
   ) {}
+
+  openTimeline(trackingNumber: string): void {
+    this.openNumber = trackingNumber;
+    this.cd.markForCheck();
+  }
 
   ngOnInit(): void {
     this.load();

@@ -1,0 +1,40 @@
+<div class="drawer-backdrop" (click)="closeDrawer()"></div>
+<aside class="drawer-panel" role="dialog" aria-label="Timeline">
+  <header class="drawer-header">
+    <span class="drawer-title">{{ trackingNumber }}</span>
+    <button type="button" class="drawer-close" aria-label="Close" (click)="closeDrawer()">×</button>
+  </header>
+  <div class="drawer-body">
+    @if (state === 'loading') {
+      <div class="loading-state" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        <span>Loading timeline…</span>
+      </div>
+    } @else if (state === 'empty') {
+      <p class="empty-state">No events yet — events will appear as the shipment progresses.</p>
+    } @else if (state === 'error') {
+      <div class="alert" role="alert">
+        <span>Couldn't load the timeline — try again.</span>
+        <button type="button" class="btn-outline-secondary" (click)="load()">Retry</button>
+      </div>
+    } @else {
+      <ul class="timeline">
+        @for (row of rows; track $index) {
+          <li class="timeline-row">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <div class="timeline-main">
+              <span class="timeline-label">{{ row.label }}</span>
+              @if (row.subLine) {
+                <span class="timeline-sub">{{ row.subLine }}</span>
+              }
+              @if (row.status) {
+                <span class="badge" [class]="badgeClass[row.status]">{{ row.status }}</span>
+              }
+            </div>
+            <span class="timeline-time">{{ row.time }}</span>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</aside>

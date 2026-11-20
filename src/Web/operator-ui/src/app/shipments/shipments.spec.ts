@@ -133,7 +133,10 @@ describe('ShipmentsComponent', () => {
     const select = el.querySelector('select') as HTMLSelectElement;
     select.value = 'Exception';
     select.dispatchEvent(new Event('change'));
-    (el.querySelector('tbody tr button') as HTMLButtonElement).click();
+    const apply = Array.from(el.querySelectorAll('tbody tr button')).find(
+      (b) => b.textContent?.trim() === 'Apply'
+    ) as HTMLButtonElement;
+    apply.click();
     http
       .expectOne(`${environment.shipmentApiUrl}/api/shipments/id-1/status`)
       .flush(shipment({ status: 'Exception' }));
@@ -153,7 +156,10 @@ describe('ShipmentsComponent', () => {
     const select = el.querySelector('select') as HTMLSelectElement;
     select.value = 'AtHub';
     select.dispatchEvent(new Event('change'));
-    (el.querySelector('tbody tr button') as HTMLButtonElement).click();
+    const apply = Array.from(el.querySelectorAll('tbody tr button')).find(
+      (b) => b.textContent?.trim() === 'Apply'
+    ) as HTMLButtonElement;
+    apply.click();
     http
       .expectOne(`${environment.shipmentApiUrl}/api/shipments/id-1/status`)
       .flush('', { status: 500, statusText: 'Internal Server Error' });

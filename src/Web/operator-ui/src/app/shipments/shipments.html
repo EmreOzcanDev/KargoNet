@@ -34,7 +34,11 @@
       <tbody>
         @for (row of shipments; track row.trackingNumber) {
           <tr>
-            <td>{{ row.trackingNumber }}</td>
+            <td>
+              <button type="button" class="tracking-link" (click)="openTimeline(row.trackingNumber)">
+                {{ row.trackingNumber }}
+              </button>
+            </td>
             <td>{{ row.description || '—' }}</td>
             <td>{{ row.destination }}</td>
             <td>
@@ -53,6 +57,12 @@
                 </select>
                 <button
                   type="button"
+                  class="btn-outline-secondary"
+                  (click)="openTimeline(row.trackingNumber)">
+                  Timeline
+                </button>
+                <button
+                  type="button"
                   class="btn-primary"
                   [disabled]="meta(row.trackingNumber).selectDisabled"
                   (click)="applyStatus(row)">
@@ -68,4 +78,9 @@
       </tbody>
     </table>
   }
+
+  @if (openNumber) {
+    <app-timeline-drawer [trackingNumber]="openNumber" (close)="openNumber = null" />
+  }
 </div>
+
