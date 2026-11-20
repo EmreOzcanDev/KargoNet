@@ -13,6 +13,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.15" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="StackExchange.Redis" Version="2.13.23" />
   </ItemGroup>
 
   <PropertyGroup>
