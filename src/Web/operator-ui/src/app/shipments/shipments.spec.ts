@@ -116,7 +116,7 @@ describe('ShipmentsComponent', () => {
 
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain(
-      "We couldn't reach the KargoNet service. Check that the Shipment API is running and try again."
+      "We couldn't reach the KargoNet service. Check your connection and try again."
     );
     const retry = Array.from(el.querySelectorAll('button')).find(
       (b) => (b as HTMLElement).textContent?.trim() === 'Retry'
