@@ -27,8 +27,17 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
 
     public async Task AckAsync(ulong deliveryTag)
     {
-        var channel = await _channelFactory.GetChannelAsync().ConfigureAwait(false);
-        await channel.BasicAckAsync(deliveryTag, multiple: false).ConfigureAwait(false);
+        // Per-operation channel (caller disposes): a shared cached channel
+        // could have been shut down by the broker between deliveries.
+        var channel = await _channelFactory.CreateChannelAsync().ConfigureAwait(false);
+        try
+        {
+            await channel.BasicAckAsync(deliveryTag, multiple: false).ConfigureAwait(false);
+        }
+        finally
+        {
+            await channel.DisposeAsync();
+        }
     }
 
     public async Task PublishAsync(
@@ -37,18 +46,24 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
         ReadOnlyMemory<byte> body,
         IDictionary<string, object?>? headers)
     {
-        var channel = await _channelFactory.GetChannelAsync().ConfigureAwait(false);
-
-        var properties = new BasicProperties
+        var channel = await _channelFactory.CreateChannelAsync().ConfigureAwait(false);
+        try
         {
-            // The wire format always carries a header table — an empty one
-            // when the caller publishes without headers.
-            Headers = headers?.ToDictionary(kv => kv.Key, kv => kv.Value)
-                    ?? new Dictionary<string, object?>()
-        };
+            var properties = new BasicProperties
+            {
+                // The wire format always carries a header table — an empty one
+                // when the caller publishes without headers.
+                Headers = headers?.ToDictionary(kv => kv.Key, kv => kv.Value)
+                        ?? new Dictionary<string, object?>()
+            };
 
-        await channel.BasicPublishAsync(
-            exchange, routingKey, mandatory: false, properties, body).ConfigureAwait(false);
+            await channel.BasicPublishAsync(
+                exchange, routingKey, mandatory: false, properties, body).ConfigureAwait(false);
+        }
+        finally
+        {
+            await channel.DisposeAsync();
+        }
     }
 
     public async Task ConsumeAsync(
@@ -122,7 +137,6 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
                         exception,
                         "Delivery {DeliveryTag} handler escaped without acking.",
                         deliveryTag);
-                    throw;
                 }
             });
 

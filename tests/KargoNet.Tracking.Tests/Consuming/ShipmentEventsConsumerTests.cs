@@ -334,6 +334,8 @@ namespace KargoNet.Tracking.Tests.Consuming
                 => _channel = channel;
 
             public override Task<IChannel> GetChannelAsync() => Task.FromResult(_channel);
+
+            public override Task<IChannel> CreateChannelAsync() => Task.FromResult(_channel);
         }
 
         /// <summary>
@@ -345,6 +347,8 @@ namespace KargoNet.Tracking.Tests.Consuming
         private sealed class FakeChannel : IChannel
         {
             public List<ulong> Acks { get; } = [];
+
+            public bool Disposed { get; private set; }
 
             public sealed record Published(
                 string Exchange,
@@ -457,8 +461,12 @@ namespace KargoNet.Tracking.Tests.Consuming
             public Task TxRollbackAsync(CancellationToken cancellationToken = default)
                 => throw new NotImplementedException();
 
-            public void Dispose() => throw new NotImplementedException();
-            public ValueTask DisposeAsync() => throw new NotImplementedException();
+            public void Dispose() => Disposed = true;
+            public ValueTask DisposeAsync()
+            {
+                Disposed = true;
+                return ValueTask.CompletedTask;
+            }
 
             // --- properties -----------------------------------------------------------
 

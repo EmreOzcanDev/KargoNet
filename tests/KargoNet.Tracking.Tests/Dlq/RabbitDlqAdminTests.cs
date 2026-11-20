@@ -39,6 +39,7 @@ namespace KargoNet.Tracking.Tests.Dlq
             var moved = await admin.ReplayAsync(CancellationToken.None);
 
             Assert.Equal(3, moved);
+            Assert.True(channel.Disposed);
             Assert.Equal(3, channel.Published.Count);
             foreach (var publish in channel.Published)
             {
@@ -63,6 +64,22 @@ namespace KargoNet.Tracking.Tests.Dlq
             var moved = await admin.ReplayAsync(CancellationToken.None);
 
             Assert.Equal(0, moved);
+            Assert.True(channel.Disposed);
+            Assert.Empty(channel.Published);
+        }
+
+        [Fact]
+        public async Task ReplayAsync_stops_on_cancellation_and_disposes_the_channel()
+        {
+            var channel = new FakeChannel();
+            channel.Deliveries = [Encoding.UTF8.GetBytes("body-1"), Encoding.UTF8.GetBytes("body-2")];
+            var admin = new RabbitDlqAdmin(new FakeChannelFactory(channel), NullLogger<RabbitDlqAdmin>.Instance);
+
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() => admin.ReplayAsync(cts.Token));
+            Assert.True(channel.Disposed);
             Assert.Empty(channel.Published);
         }
 
@@ -76,6 +93,8 @@ namespace KargoNet.Tracking.Tests.Dlq
                 => _channel = channel;
 
             public override Task<IChannel> GetChannelAsync() => Task.FromResult(_channel);
+
+            public override Task<IChannel> CreateChannelAsync() => Task.FromResult(_channel);
         }
 
         /// <summary>
@@ -88,6 +107,8 @@ namespace KargoNet.Tracking.Tests.Dlq
             public List<ReadOnlyMemory<byte>> Deliveries { get; set; } = [];
             public List<string> PassiveDeclares { get; } = [];
             public List<(string exchange, string routingKey, IReadOnlyBasicProperties? properties, ReadOnlyMemory<byte> body)> Published { get; } = [];
+
+            public bool Disposed { get; private set; }
 
             private int _deliveryIndex;
 
@@ -200,8 +221,12 @@ namespace KargoNet.Tracking.Tests.Dlq
             public Task TxRollbackAsync(CancellationToken cancellationToken = default)
                 => throw new NotImplementedException();
 
-            public void Dispose() => throw new NotImplementedException();
-            public ValueTask DisposeAsync() => throw new NotImplementedException();
+            public void Dispose() => Disposed = true;
+            public ValueTask DisposeAsync()
+            {
+                Disposed = true;
+                return ValueTask.CompletedTask;
+            }
 
             // --- properties -----------------------------------------------------------
 

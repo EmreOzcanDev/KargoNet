@@ -26,32 +26,46 @@ public sealed class RabbitDlqAdmin : IDlqAdmin
 
     public async Task<int> CountAsync()
     {
-        var channel = await _channelFactory.GetChannelAsync().ConfigureAwait(false);
-        var passive = await channel.QueueDeclarePassiveAsync(RabbitTopology.Dlq).ConfigureAwait(false);
-        return (int)passive.MessageCount;
+        var channel = await _channelFactory.CreateChannelAsync().ConfigureAwait(false);
+        try
+        {
+            var passive = await channel.QueueDeclarePassiveAsync(RabbitTopology.Dlq).ConfigureAwait(false);
+            return (int)passive.MessageCount;
+        }
+        finally
+        {
+            await channel.DisposeAsync();
+        }
     }
 
     public async Task<int> ReplayAsync(CancellationToken ct)
     {
-        var channel = await _channelFactory.GetChannelAsync().ConfigureAwait(false);
+        var channel = await _channelFactory.CreateChannelAsync().ConfigureAwait(false);
         var moved = 0;
 
-        while (true)
+        try
         {
-            ct.ThrowIfCancellationRequested();
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
 
-            // BasicGet with auto-ack: the message leaves the DLQ the moment it
-            // is read, so a crash mid-replay loses at most the in-flight body.
-            var delivery = await channel.BasicGetAsync(RabbitTopology.Dlq, autoAck: true, ct).ConfigureAwait(false);
-            if (delivery is null)
-                break;
+                // BasicGet with auto-ack: the message leaves the DLQ the moment it
+                // is read, so a crash mid-replay loses at most the in-flight body.
+                var delivery = await channel.BasicGetAsync(RabbitTopology.Dlq, autoAck: true, ct).ConfigureAwait(false);
+                if (delivery is null)
+                    break;
 
-            // No DeliveryProperties: a fresh delivery with no x-retry-count.
-            await channel.BasicPublishAsync(
-                RabbitTopology.Exchange,
-                RabbitTopology.ShipmentRoutingKey,
-                delivery.Body).ConfigureAwait(false);
-            moved++;
+                // No DeliveryProperties: a fresh delivery with no x-retry-count.
+                await channel.BasicPublishAsync(
+                    RabbitTopology.Exchange,
+                    RabbitTopology.ShipmentRoutingKey,
+                    delivery.Body).ConfigureAwait(false);
+                moved++;
+            }
+        }
+        finally
+        {
+            await channel.DisposeAsync();
         }
 
         _logger.LogInformation(
