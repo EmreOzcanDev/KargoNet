@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using KargoNet.Contracts.Events;
 using KargoNet.Contracts.Models;
 using KargoNet.Messaging.Consuming;
+using Microsoft.EntityFrameworkCore.Update;
 using KargoNet.Messaging.Infra;
 using KargoNet.Messaging.Topology;
 using KargoNet.Tracking.Api.Consuming;
@@ -79,15 +80,7 @@ namespace KargoNet.Tracking.Tests.Consuming
             public void Dispose() => Db.Dispose();
         }
 
-        private static TrackingDbContext CreateContext()
-        {
-            var options = new DbContextOptionsBuilder<TrackingDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
-                .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-                .Options;
-
-            return new TrackingDbContext(options);
-        }
+        private static TrackingDbContext CreateContext() => new(CreateOptions());
 
         private static readonly JsonSerializerOptions WireOptions = new()
         {
@@ -161,6 +154,70 @@ namespace KargoNet.Tracking.Tests.Consuming
             Assert.Empty(fixture.Channel.Publishes);
             Assert.Single(fixture.Cache.Deletions);
             Assert.Single(fixture.Broadcaster.Broadcasts);
+        }
+
+        [Fact]
+        public async Task Race_backstop_committed_marker_is_ackd_as_success_without_retry()
+        {
+            // The losing writer of a duplicate race sees its SaveChanges fail
+            // with a DbUpdateException AFTER a rival marker commits: the D2
+            // backstop must treat that as "already processed" and ack.
+            using var db = new RaceSimulatingTrackingDbContext(CreateOptions(), true);
+            var cache = new RecordingCache();
+            var broadcaster = new RecordingBroadcaster();
+            var handler = new ShipmentEventHandler(db, cache, broadcaster, NullLogger<ShipmentEventHandler>.Instance);
+            var provider = new ServiceCollection()
+                .AddSingleton<ShipmentEventHandler>(handler)
+                .BuildServiceProvider();
+
+            var channel = new FakeChannel();
+            var consumer = new ShipmentEventsConsumer(
+                provider.GetRequiredService<IServiceScopeFactory>(),
+                new RabbitConsumerBroker(new FakeChannelFactory(channel), NullLogger<RabbitConsumerBroker>.Instance),
+                new FakeChannelFactory(channel),
+                NullLogger<ShipmentEventsConsumer>.Instance);
+
+            var eventId = Guid.NewGuid();
+            await consumer.HandleDeliveryAsync(9, CreatedBody(eventId, "TRK-200"), null);
+            Assert.Equal([9UL], channel.Acks);
+            Assert.Empty(channel.Publishes);
+            Assert.True(await db.ProcessedEvents.AnyAsync(e => e.EventId == eventId));
+            Assert.Equal(0, await db.ShipmentTrackings.CountAsync());
+            // The swallow path still runs the idempotent post-commit side effects.
+            Assert.Single(broadcaster.Broadcasts);
+        }
+
+        [Fact]
+        public async Task DbUpdateException_without_committed_marker_is_rethrown_and_routed_to_retry()
+        {
+            using var db = new RaceSimulatingTrackingDbContext(CreateOptions(), false);
+            var handler = new ShipmentEventHandler(db, new RecordingCache(), new RecordingBroadcaster(), NullLogger<ShipmentEventHandler>.Instance);
+            var provider = new ServiceCollection()
+                .AddSingleton<ShipmentEventHandler>(handler)
+                .BuildServiceProvider();
+
+            var channel = new FakeChannel();
+            var consumer = new ShipmentEventsConsumer(
+                provider.GetRequiredService<IServiceScopeFactory>(),
+                new RabbitConsumerBroker(new FakeChannelFactory(channel), NullLogger<RabbitConsumerBroker>.Instance),
+                new FakeChannelFactory(channel),
+                NullLogger<ShipmentEventsConsumer>.Instance);
+
+            var eventId = Guid.NewGuid();
+            var occurredAt = DateTimeOffset.UtcNow;
+            var payload = new ShipmentCreatedPayload("TRK-201", "Fragile", "Izmir");
+
+            // A genuine write failure (no rival marker committed) must
+            // surface as DbUpdateException from the handler.
+            await Assert.ThrowsAsync<DbUpdateException>(() =>
+                handler.ApplyCreatedAsync(eventId, ShipmentEventsConsumer.CreatedEventType, occurredAt, JsonSerializer.Serialize(payload), payload));
+
+            // End-to-end: the failure routes to the retry queue and is acked.
+            await consumer.HandleDeliveryAsync(3, CreatedBody(eventId, "TRK-201"), null);
+            var first = Assert.Single(channel.Publishes);
+            Assert.Equal(RabbitTopology.RetryRoutingKey, first.RoutingKey);
+            Assert.Equal(1, first.Headers!["x-retry-count"]);
+            Assert.Equal([3UL], channel.Acks);
         }
 
         [Fact]
@@ -375,6 +432,7 @@ namespace KargoNet.Tracking.Tests.Consuming
             public Task<QueueDeclareOk> QueueDeclareAsync(string queue, bool durable, bool exclusive, bool autoDelete, IDictionary<string, object?>? arguments = null, bool passive = false, bool noWait = false, CancellationToken cancellationToken = default)
                 => throw new NotImplementedException();
 
+
             public Task<uint> QueueDeleteAsync(string queue, bool ifUnused, bool ifEmpty, bool noWait = false, CancellationToken cancellationToken = default)
                 => throw new NotImplementedException();
 
@@ -450,5 +508,64 @@ namespace KargoNet.Tracking.Tests.Consuming
                 remove => throw new NotImplementedException();
             }
         }
+    private static DbContextOptions<TrackingDbContext> CreateOptions()
+    {
+        var builder = new DbContextOptionsBuilder<TrackingDbContext>();
+        builder.UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning));
+        return builder.Options;
+    }
+
+    /// <summary>
+    /// Simulates a failing <see cref="SaveChangesAsync"/> with a
+    /// <see cref="DbUpdateException"/>. With <paramref name="commitRivalMarker"/>
+    /// it first commits a rival <see cref="ProcessedEvent"/> marker (the
+    /// concurrent-winner race the D2 backstop recognizes); without it, the
+    /// marker stays absent (a genuine write failure).
+    /// </summary>
+    private sealed class RaceSimulatingTrackingDbContext : TrackingDbContext
+    {
+        private readonly DbContextOptions<TrackingDbContext> _options;
+        private readonly bool _commitRivalMarker;
+        private bool _simulated;
+
+        public RaceSimulatingTrackingDbContext(
+            DbContextOptions<TrackingDbContext> options,
+            bool commitRivalMarker)
+            : base(options)
+        {
+            _options = options;
+            _commitRivalMarker = commitRivalMarker;
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            if (!_simulated)
+            {
+                _simulated = true;
+
+                // As the concurrent winner would, commit the marker first.
+                if (_commitRivalMarker)
+                {
+                    var marker = ChangeTracker.Entries<ProcessedEvent>()
+                        .FirstOrDefault(e => e.State == EntityState.Added);
+                    if (marker is not null)
+                    {
+                        using var rival = new TrackingDbContext(_options);
+                        rival.ProcessedEvents.Add(new ProcessedEvent
+                        {
+                            EventId = marker.Entity.EventId,
+                            ProcessedAt = DateTimeOffset.UtcNow,
+                        });
+                        rival.SaveChanges();
+                    }
+                }
+            }
+
+            throw new DbUpdateException(
+                "Duplicate key value violates unique constraint on ProcessedEvents.",
+                new Exception("23505"));
+        }
+    }
     }
 }

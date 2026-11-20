@@ -14,9 +14,12 @@ namespace KargoNet.Tracking.Api.Consuming;
 /// <c>EventId</c>, <c>ShipmentTracking</c> upsert, <c>TrackingEvent</c>
 /// insert, <c>ProcessedEvent</c> insert. A concurrent-duplicate
 /// <see cref="DbUpdateException"/> on commit is treated as
-/// already-processed (race backstop, design D2). Post-commit side
-/// effects (cache invalidation + broadcast) are best-effort: each is
-/// logged and never rethrown.
+/// already-processed ONLY when the marker re-check confirms the race (D2
+/// backstop): after the rollback the <c>ProcessedEvents</c> row is re-looked
+/// up, and a missing marker means a genuine write failure, which is
+/// rethrown so the consumer routes the event to retry → DLQ like every
+/// other failure. Post-commit side effects (cache invalidation +
+/// broadcast) are best-effort: each is logged and never rethrown.
 /// </summary>
 public sealed class ShipmentEventHandler
 {
@@ -124,12 +127,25 @@ public sealed class ShipmentEventHandler
         }
         catch (DbUpdateException ex)
         {
-            // Concurrent-duplicate race backstop (D2): the losing writer of a
-            // duplicate EventId surfaces a primary-key conflict here. Treat as
-            // already-processed — do not rethrow.
+            // The D2 backstop is the ProcessedEvent PK race, not a blanket
+            // "any write failure is success": re-check the marker in the
+            // store after the rollback. A concurrent writer that committed
+            // it means this event was already applied — swallow. Anything
+            // else (foreign-key violation, value too long, …) rethrows so
+            // the consumer routes it to retry → DLQ like every other
+            // failure.
             await transaction.RollbackAsync();
-            _logger.LogInformation(ex, "Event {EventId} commit lost a duplicate race; treating as processed.", eventId);
-            return;
+            var alreadyProcessed = await _db.ProcessedEvents
+                .AsNoTracking()
+                .AnyAsync(e => e.EventId == eventId);
+
+            if (!alreadyProcessed)
+                throw;
+
+            _logger.LogInformation(
+                ex,
+                "Concurrent duplicate race for {EventId} on {TrackingNumber}; treating as already processed.",
+                eventId, trackingNumber);
         }
 
         // Post-commit side effects: best-effort, never rethrow.
