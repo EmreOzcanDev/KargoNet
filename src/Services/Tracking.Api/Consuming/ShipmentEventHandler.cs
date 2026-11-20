@@ -92,6 +92,7 @@ public sealed class ShipmentEventHandler
             // (2) Upsert the read-model row by tracking number.
             row = (await _db.ShipmentTrackings
                 .FirstOrDefaultAsync(t => t.TrackingNumber == trackingNumber))!;
+            var rowExisted = row is not null;
             if (row is null)
             {
                 row = new ShipmentTracking
@@ -101,6 +102,22 @@ public sealed class ShipmentEventHandler
                     UpdatedAt = occurredAt,
                 };
                 _db.ShipmentTrackings.Add(row);
+            }
+
+            // Stale-event guard (out-of-order tolerance): an EXISTING row that
+            // has already advanced to a state at or after this event's
+            // timestamp must not be regressed by it (e.g. a late
+            // `shipment.created` overwriting a `PickedUp` row). The event is
+            // skipped wholesale — no row change, no timeline entry. (A
+            // freshly created row always matches its own occurredAt and is
+            // never stale.)
+            if (rowExisted && occurredAt <= row.UpdatedAt)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogInformation(
+                    "Stale {EventType} for {TrackingNumber} (occurredAt {OccurredAt} <= last applied {UpdatedAt}); skipping.",
+                    eventType, trackingNumber, occurredAt, row.UpdatedAt);
+                return;
             }
             mutate(row);
 

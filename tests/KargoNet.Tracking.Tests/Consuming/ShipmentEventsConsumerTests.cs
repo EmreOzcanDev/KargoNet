@@ -324,6 +324,64 @@ namespace KargoNet.Tracking.Tests.Consuming
             Assert.Empty(fixture.Broadcaster.Broadcasts);
         }
 
+        [Fact]
+        public async Task Late_created_event_does_not_regress_an_existing_row()
+        {
+            using var fixture = new Fixture();
+            var createdId = Guid.NewGuid();
+            var changedId = Guid.NewGuid();
+            var now = DateTimeOffset.UtcNow;
+            var late = now.AddHours(-1);
+
+            // The row has already advanced past the late event's timestamp.
+            await fixture.Handler.ApplyStatusChangedAsync(
+                changedId, "shipment.status.changed", now, "{}",
+                new ShipmentStatusChangedPayload(changedId, "TRK-105", ShipmentStatus.Created, ShipmentStatus.PickedUp));
+
+            // A `shipment.created` arriving AFTER the status change must be
+            // skipped: no regression, no timeline entry, no marker.
+            await fixture.Handler.ApplyCreatedAsync(
+                createdId, "shipment.created", late, "{}",
+                new ShipmentCreatedPayload("TRK-105", "Fragile", "Izmir"));
+
+            var row = await fixture.Db.ShipmentTrackings.SingleAsync(t => t.TrackingNumber == "TRK-105");
+            Assert.Equal(ShipmentStatus.PickedUp.ToString(), row.Status);
+            Assert.Equal(now, row.CreatedAt);
+            Assert.Equal(now, row.UpdatedAt);
+
+            var timeline = await fixture.Db.TrackingEvents
+                .Where(e => e.TrackingNumber == "TRK-105")
+                .ToListAsync();
+            var single = Assert.Single(timeline);
+            Assert.Equal(ShipmentEventsConsumer.StatusChangedEventType, single.EventType);
+
+            Assert.False(await fixture.Db.ProcessedEvents.AnyAsync(p => p.EventId == createdId));
+        }
+
+        [Fact]
+        public async Task Late_status_change_does_not_overwrite_a_newer_status()
+        {
+            using var fixture = new Fixture();
+            var createdId = Guid.NewGuid();
+            var lateId = Guid.NewGuid();
+            var now = DateTimeOffset.UtcNow;
+            var late = now.AddMinutes(-5);
+
+            await fixture.Handler.ApplyCreatedAsync(
+                createdId, "shipment.created", now, "{}",
+                new ShipmentCreatedPayload("TRK-106", "Fragile", "Izmir"));
+
+            await fixture.Handler.ApplyStatusChangedAsync(
+                lateId, "shipment.status.changed", late, "{}",
+                new ShipmentStatusChangedPayload(lateId, "TRK-106", ShipmentStatus.Created, ShipmentStatus.PickedUp));
+
+            var row = await fixture.Db.ShipmentTrackings.SingleAsync(t => t.TrackingNumber == "TRK-106");
+            Assert.Equal("Created", row.Status);
+            Assert.Equal(now, row.UpdatedAt);
+            Assert.Equal(1, await fixture.Db.TrackingEvents.CountAsync());
+            Assert.False(await fixture.Db.ProcessedEvents.AnyAsync(p => p.EventId == lateId));
+        }
+
         /// <summary><see cref="LazyChannelFactory"/> wired to a canned channel (no broker).</summary>
         private sealed class FakeChannelFactory : LazyChannelFactory
         {
