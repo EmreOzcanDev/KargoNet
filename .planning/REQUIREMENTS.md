@@ -42,11 +42,11 @@
 
 ### Platform
 
-- [ ] **PLAT-01**: Docker Compose stack with Postgres 17, RabbitMQ 4 (management UI on 15672), Redis 7, each with healthchecks
-- [ ] **PLAT-02**: Multi-stage Dockerfiles for each service (shipment-api, tracking-api, portal-web, operator-ui)
-- [ ] **PLAT-03**: Postgres init script creates `shipments` and `tracking` databases
-- [ ] **PLAT-04**: xUnit tests cover consumer retry decisions, idempotency, and cache invalidation
-- [ ] **PLAT-05**: README documents how to build, run, and demo the system end-to-end
+- [x] **PLAT-01**: Docker Compose stack with Postgres 17, RabbitMQ 4 (management UI on 15672), Redis 7, each with healthchecks
+- [x] **PLAT-02**: Multi-stage Dockerfiles for each service (shipment-api, tracking-api, portal-web, operator-ui)
+- [x] **PLAT-03**: Postgres init script creates `shipments` and `tracking` databases
+- [x] **PLAT-04**: xUnit tests cover consumer retry decisions, idempotency, and cache invalidation
+- [x] **PLAT-05**: README documents how to build, run, and demo the system end-to-end
 
 ## v2 Requirements
 
@@ -85,11 +85,11 @@
 | MSG-02 | Phase 2 | Complete |
 | MSG-03 | Phase 2 | Complete |
 | MSG-04 | Phase 2 | Complete |
-| PLAT-01 | Phase 6 | Pending |
-| PLAT-02 | Phase 6 | Pending |
-| PLAT-03 | Phase 6 | Pending |
-| PLAT-04 | Phase 6 | Pending |
-| PLAT-05 | Phase 6 | Pending |
+| PLAT-01 | Phase 6 | Complete |
+| PLAT-02 | Phase 6 | Complete |
+| PLAT-03 | Phase 6 | Complete |
+| PLAT-04 | Phase 6 | Complete |
+| PLAT-05 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 25 total
