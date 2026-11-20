@@ -1,0 +1,13 @@
+.page-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--sp-lg) var(--sp-md);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-md);
+  margin-bottom: var(--sp-lg);
+}

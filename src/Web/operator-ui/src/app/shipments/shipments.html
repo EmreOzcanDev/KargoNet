@@ -1,0 +1,47 @@
+<div class="page-container">
+  <header class="page-header">
+    <h1 class="page-title">KargoNet Operator</h1>
+  </header>
+
+  @if (state === 'loading') {
+    <div class="loading-state" role="status">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>Loading shipments…</span>
+    </div>
+  } @else if (state === 'empty') {
+    <div class="empty-state">
+      <p>No shipments</p>
+      <p class="hint">Shipments created in the customer portal will appear here.</p>
+    </div>
+  } @else if (state === 'error') {
+    <div class="alert" role="alert">
+      <span>We couldn't reach the KargoNet service. Check that the Shipment API is running and try again.</span>
+      <button type="button" class="btn-outline-secondary" (click)="load()">Retry</button>
+    </div>
+  } @else {
+    <table class="shipments-table">
+      <thead>
+        <tr>
+          <th scope="col">Tracking number</th>
+          <th scope="col">Description</th>
+          <th scope="col">Destination</th>
+          <th scope="col">Status</th>
+          <th scope="col">Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of shipments; track row.id) {
+          <tr>
+            <td>{{ row.trackingNumber }}</td>
+            <td>{{ row.description || '—' }}</td>
+            <td>{{ row.destination }}</td>
+            <td>
+              <span class="badge" [class]="badgeClass[row.status]">{{ row.status }}</span>
+            </td>
+            <td>{{ formatUpdated(row.updatedAt) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

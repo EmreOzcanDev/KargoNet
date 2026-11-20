@@ -1,1 +1,350 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --sp-xs: 4px;
+  --sp-sm: 8px;
+  --sp-md: 16px;
+  --sp-lg: 24px;
+  --sp-xl: 32px;
+  --sp-2xl: 48px;
+  --sp-3xl: 64px;
+
+  --color-accent: #0d6efd;
+  --color-muted: #6c757d;
+  --color-danger: #dc3545;
+  --color-success: #198754;
+  --color-surface: #f8f9fa;
+  --color-border: #dee2e6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  color: #212529;
+  background: #fff;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+}
+
+/* Status badges (map lives in core/statuses.ts — D6) */
+.badge {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 50rem;
+  white-space: nowrap;
+}
+
+.badge-created {
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #6c757d;
+}
+
+.badge-picked-up {
+  background: #6c757d;
+  color: #fff;
+}
+
+.badge-in-transit {
+  background: #0d6efd;
+  color: #fff;
+}
+
+.badge-at-hub {
+  background: #ffc107;
+  color: #212529;
+}
+
+.badge-out-for-delivery {
+  background: #0dcaf0;
+  color: #212529;
+}
+
+.badge-delivered {
+  background: #198754;
+  color: #fff;
+}
+
+.badge-exception {
+  background: #dc3545;
+  color: #fff;
+}
+
+/* Table */
+table.shipments-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+
+.shipments-table thead th {
+  background: #f8f9fa;
+  text-align: left;
+  font-weight: 600;
+  padding: var(--sp-sm) var(--sp-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.shipments-table tbody td {
+  padding: var(--sp-md);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.shipments-table tbody tr:nth-child(even) {
+  background: #f8f9fa;
+}
+
+.shipments-table .tracking-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.shipments-table .tracking-link:hover {
+  text-decoration: underline;
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  font-size: 16px;
+  line-height: 1.4;
+  padding: var(--sp-sm) var(--sp-md);
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #0b5ed7;
+}
+
+.btn-outline-secondary {
+  border-color: var(--color-muted);
+  color: var(--color-muted);
+}
+
+.btn-outline-secondary:hover {
+  background: var(--color-muted);
+  color: #fff;
+}
+
+/* Alert banner */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-md);
+  padding: var(--sp-md);
+  border-radius: 6px;
+  margin: var(--sp-md) 0;
+  background: #f8d7da;
+  border: 1px solid #f5c2c7;
+  color: #842029;
+}
+
+.alert .close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  padding: 0;
+}
+
+/* Connection indicator pill */
+.indicator {
+  display: inline-block;
+  font-size: 14px;
+  padding: 4px 12px;
+  border-radius: 50rem;
+  color: #fff;
+}
+
+.indicator-connected {
+  background: var(--color-success);
+}
+
+.indicator-reconnecting {
+  background: var(--color-muted);
+}
+
+.indicator-disconnected {
+  background: var(--color-danger);
+}
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  margin-right: var(--sp-sm);
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-lg) 0;
+  color: var(--color-muted);
+}
+
+/* Empty state */
+.empty-state {
+  padding: var(--sp-2xl) 0;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.empty-state .empty-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 var(--sp-xs);
+  color: #212529;
+}
+
+/* Row-level apply error */
+.row-error {
+  display: block;
+  margin-top: var(--sp-xs);
+  font-size: 14px;
+  color: var(--color-danger);
+}
+
+select.row-select {
+  font-size: 16px;
+  padding: var(--sp-xs) var(--sp-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  margin-right: var(--sp-sm);
+}
+
+/* Timeline drawer (O2) */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 400px;
+  background: #fff;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  padding: var(--sp-md);
+  background: #f8f9fa;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.drawer-header .drawer-number {
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.drawer-header .close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-muted);
+  padding: 0;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-lg);
+}
+
+.timeline-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-lg) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.timeline-row:last-child {
+  border-bottom: none;
+}
+
+.timeline-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.timeline-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeline-label {
+  font-size: 16px;
+}
+
+.timeline-sub {
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+.timeline-row .badge {
+  flex-shrink: 0;
+}
+
+.timeline-time {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--color-muted);
+}
