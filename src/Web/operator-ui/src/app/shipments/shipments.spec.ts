@@ -223,4 +223,19 @@ describe('ShipmentsComponent', () => {
     fixture.detectChanges();
     expect(el.textContent).toContain('Offline');
   });
+
+  it('keeps the status select preselected to the row status across a passive CD pass', () => {
+    http.expectOne(LIST_URL).flush([shipment()]);
+    fixture.detectChanges();
+
+    // A hub state change (e.g. connected) triggers change detection without
+    // the user touching the select; the preselect must not degrade to the
+    // first option or the tracking number.
+    fake.connectionState.next('connected');
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const select = el.querySelector('select') as HTMLSelectElement;
+    expect(select.value).toBe('Delivered');
+  });
 });

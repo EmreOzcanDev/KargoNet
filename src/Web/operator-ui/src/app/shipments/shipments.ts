@@ -15,7 +15,7 @@ import { STATUS_BADGE_CLASS, STATUS_OPTIONS } from '../core/statuses';
 type ListState = 'loading' | 'empty' | 'error' | 'populated';
 
 interface RowMeta {
-  statusSelect: string;
+  statusSelect: string | null;
   applyError: boolean;
   selectDisabled: boolean;
 }
@@ -93,7 +93,7 @@ export class ShipmentsComponent implements OnInit, OnDestroy {
   meta(trackingNumber: string): RowMeta {
     let m = this.rowMeta.get(trackingNumber);
     if (m === undefined) {
-      m = { statusSelect: trackingNumber, applyError: false, selectDisabled: false };
+      m = { statusSelect: null, applyError: false, selectDisabled: false };
       this.rowMeta.set(trackingNumber, m);
     }
     return m;
@@ -101,7 +101,7 @@ export class ShipmentsComponent implements OnInit, OnDestroy {
 
   selectFor(row: ShipmentDto): string {
     const m = this.rowMeta.get(row.trackingNumber);
-    return m === undefined ? row.status : m.statusSelect;
+    return m?.statusSelect ?? row.status;
   }
 
   onStatusSelect(row: ShipmentDto, event: Event): void {
