@@ -4,18 +4,18 @@ milestone: v1.0
 milestone_name: KargoNet
 current_plan: Not started
 status: Not started
-stopped_at: Phase 4 complete, ready to plan Phase 5
-last_updated: "2026-11-20T06:38:47.501Z"
-state_head: e46b4c692e834d1e2b4c14cd8ec13b7b3a5ce6a6
+stopped_at: Phase 5 complete, ready to plan Phase 6
+last_updated: "2026-11-20T09:48:08.621Z"
+state_head: 44fc598f8807d724e5f792b65060a16655d9cdc3
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
-  percent: 67
+  completed_phases: 5
+  total_plans: 15
+  completed_plans: 15
+  percent: 83
 last_activity: 2026-11-19
-current_phase: 5
-current_phase_name: Web Frontends
+current_phase: 6
+current_phase_name: Docker, Tests & Documentation
 last_activity_desc: STATE.md frontmatter restored
 ---
 
@@ -28,23 +28,23 @@ last_activity_desc: STATE.md frontmatter restored
 - **Roadmap**: See [ROADMAP.md](./ROADMAP.md) for phase structure and success criteria.
 
 **Core value:** Reliable shipment status propagation: a status change made in the operator UI must reach the customer portal and the operator's live view without loss, even when RabbitMQ or individual consumers are temporarily down.
-**Current focus:** Phase 5 — Web Frontends
+**Current focus:** Phase 6 — Docker, Tests & Documentation
 
 ## Current Position
 Current Plan: Not started
 Total Plans in Phase: TBD
 
 
-- **Phase**: 5 (Web Frontends)
+- **Phase**: 6 (Docker, Tests & Documentation)
 - **Status**: Ready to plan
-- **Last Activity**: 2026-11-20 — Phase 4 complete (verification 4/4 passed, 78/78 tests), transitioned to Phase 5
+- **Last Activity**: 2026-11-20 — Phase 5 complete (verification 5/5 passed, 90/90 dotnet + 26/26 vitest), transitioned to Phase 6
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases completed | 4/6 |
-| Requirements validated | 13/25 |
+| Phases completed | 5/6 |
+| Requirements validated | 20/25 |
 **Per-Plan Metrics:**
 
 | Plan | Duration | Tasks | Files |
@@ -62,6 +62,8 @@ Total Plans in Phase: TBD
 | Phase 4 P01 | 95m | 3 tasks | 15 files |
 | Phase 4 P02 | 150m | 3 tasks | 13 files |
 | Phase 4 P03 | 200m | 3 tasks | 10 files |
+| Phase 5 P01 | 120m | 3 tasks | 24 files |
+| Phase 5 P02 | 150m | 3 tasks | 23 files |
 
 ## Accumulated Context
 
@@ -86,6 +88,9 @@ Total Plans in Phase: TBD
 - [Phase 4]: SignalR TrackingHub at /hubs/tracking with Join/Leave tracking-number groups; ShipmentUpdated broadcast to Clients.All + group via scoped IShippingUpdateBroadcaster (IHubContext seam)
 - [Phase 4]: RabbitConsumerBroker implements the frozen IConsumerBroker and gains ConsumeAsync as a class member; LazyChannelFactory uses per-operation channels (channel not thread-safe); BasicQos prefetch 10; hosted consume loop retries on 2 s, host never dies
 - [Phase 4]: DLQ admin: passive-declare count + drain-and-republish verbatim to shipment routing key with NO x-retry-count, cancellable, per-op channel
+- [Phase 5]: D1-D8 locked in 05-CONTEXT.md — portal server-rendered MVC (/ + /track?number= + /shipments/new), PortalApiClient singleton (404->null, 5xx/timeout->ApiRequestException), operator SPA single route ShipmentsComponent, one app-level HubConnection, drawer-scoped Join/LeaveTrackingGroup + live re-fetch, single statuses.ts, env-based API URLs, explicit loading/empty/not-found/error states
+- [Phase 5]: UI-SPEC approved all 7 dimensions (1 BLOCK provenance count + 1 FLAG drawer close aria fixed in-spec); plan-check: no BLOCKERs — W-1 (O1 error state owner), I-1 (Empty = IsNullOrWhiteSpace), I-2 (32px display class) applied to plans; W-2 file counts accepted (natural minimum split)
+- [Phase 5]: code review 1 MAJOR (status select preselect — `[selected]` on option, not `[value]` on select, in unit-test env) + 7 MINOR fixed (e5e4f4f..fa9db0e); zoneless markForCheck required in every RxJS subscribe callback
 
 ### Todos
 - (none yet)
@@ -97,7 +102,7 @@ Total Plans in Phase: TBD
 ## Session Continuity
 
 Last session: 2026-11-20T23:30:00Z
-Stopped at: Phase 4 complete, ready to plan Phase 5
+Stopped at: Phase 5 complete, ready to plan Phase 6
 Resume file: None
 
-*Last updated: 2026-11-20 after Phase 4*
+*Last updated: 2026-11-20 after Phase 5*

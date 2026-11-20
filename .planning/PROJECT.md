@@ -17,12 +17,13 @@ Reliable shipment status propagation: a status change made in the operator UI mu
 - ✓ Messaging: RabbitMQ topology (exchange, main/retry 5s-TTL/DLQ queues), publisher with confirms, consumer base with retry and dead-letter logic — Phase 2
 - ✓ Shipment.Api: EF Core model (Shipment, OutboxMessage), InitialCreate migration, REST endpoints (POST/GET/PUT), outbox publisher background service — Phase 3
 - ✓ Tracking.Api: event consumer with idempotency (ProcessedEvents), read model (ShipmentTracking, TrackingEvents), Redis cache-aside, SignalR hub, DLQ admin endpoints — Phase 4
+- ✓ Portal.Web: MVC customer portal with tracking search, timeline view, create-shipment form — Phase 5
+- ✓ Operator UI: Angular app with shipments table, status-update action, SignalR live updates, timeline detail drawer — Phase 5
 
 ### Active
 
 - [ ] Toolchain bootstrap: Docker installed and working (.NET 10 SDK validated Phase 1)
-- [ ] Portal.Web: MVC customer portal with tracking search, timeline view, create-shipment form
-- [ ] Operator UI: Angular app with shipments table, status-update action, SignalR live updates, timeline detail drawer, nginx proxy
+- [ ] Operator UI nginx proxy (Docker packaging — Phase 6)
 - [ ] Docker: multi-stage Dockerfiles, docker-compose.yml with healthchecks, Postgres init script, .env
 - [ ] Tests and README: xUnit tests for retry, idempotency, cache logic; README with run and demo steps; end-to-end verification
 
@@ -63,6 +64,7 @@ Reliable shipment status propagation: a status change made in the operator UI mu
 | Docker Compose for all infrastructure | Single-command local dev; healthchecks gate service startup ordering | — Pending |
 | Classic .sln (not .slnx) | .NET 10 defaults to .slnx; plan/ROADMAP pin KargoNet.sln | ✓ Phase 1 |
 | Client-side Angular SPA (--ssr false) | Operator screen is a live-updating dashboard; SSR buys nothing, keeps Dockerfile simple | ✓ Phase 1 |
+| Server-rendered MVC portal (no SPA) | Customers track by number; server rendering keeps the customer side simple and Dockerfile-free | ✓ Phase 5 |
 
 ## Evolution
 
@@ -82,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-20 after Phase 4*
+*Last updated: 2026-11-20 after Phase 5*

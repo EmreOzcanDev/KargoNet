@@ -7,16 +7,16 @@
 
 ### Customer Portal
 
-- [ ] **CUST-01**: Customer can create a shipment with tracking number, description, and destination
-- [ ] **CUST-02**: Customer can look up a shipment by tracking number
-- [ ] **CUST-03**: Customer can see the shipment's current status and full event timeline
+- [x] **CUST-01**: Customer can create a shipment with tracking number, description, and destination
+- [x] **CUST-02**: Customer can look up a shipment by tracking number
+- [x] **CUST-03**: Customer can see the shipment's current status and full event timeline
 
 ### Operator Screen
 
-- [ ] **OPS-01**: Operator can see a table of all shipments with current status badges
-- [ ] **OPS-02**: Operator can update a shipment's status through the lifecycle (Created, PickedUp, InTransit, AtHub, OutForDelivery, Delivered, Exception)
-- [ ] **OPS-03**: Operator receives live status updates via SignalR without refreshing
-- [ ] **OPS-04**: Operator can view a shipment's event timeline in a detail drawer
+- [x] **OPS-01**: Operator can see a table of all shipments with current status badges
+- [x] **OPS-02**: Operator can update a shipment's status through the lifecycle (Created, PickedUp, InTransit, AtHub, OutForDelivery, Delivered, Exception)
+- [x] **OPS-03**: Operator receives live status updates via SignalR without refreshing
+- [x] **OPS-04**: Operator can view a shipment's event timeline in a detail drawer
 
 ### Shipment API
 
@@ -65,13 +65,13 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CUST-01 | Phase 5 | Pending |
-| CUST-02 | Phase 5 | Pending |
-| CUST-03 | Phase 5 | Pending |
-| OPS-01 | Phase 5 | Pending |
-| OPS-02 | Phase 5 | Pending |
-| OPS-03 | Phase 5 | Pending |
-| OPS-04 | Phase 5 | Pending |
+| CUST-01 | Phase 5 | Complete |
+| CUST-02 | Phase 5 | Complete |
+| CUST-03 | Phase 5 | Complete |
+| OPS-01 | Phase 5 | Complete |
+| OPS-02 | Phase 5 | Complete |
+| OPS-03 | Phase 5 | Complete |
+| OPS-04 | Phase 5 | Complete |
 | SHIP-01 | Phase 3 | Complete |
 | SHIP-02 | Phase 3 | Complete |
 | SHIP-03 | Phase 3 | Complete |
