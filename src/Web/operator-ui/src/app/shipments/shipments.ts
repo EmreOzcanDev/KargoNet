@@ -116,7 +116,7 @@ export class ShipmentsComponent implements OnInit, OnDestroy {
 
   applyStatus(row: ShipmentDto): void {
     const m = this.meta(row.trackingNumber);
-    this.api.updateStatus(row.id, m.statusSelect).subscribe({
+    this.api.updateStatus(row.id, this.selectFor(row)).subscribe({
       next: (updated) => {
         row.status = updated.status;
         row.updatedAt = updated.updatedAt;
