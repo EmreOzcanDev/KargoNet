@@ -1,0 +1,47 @@
+@model Portal.Web.Models.NewShipmentViewModel
+@{
+    ViewData["Title"] = "Create shipment";
+}
+
+<div class="card mx-auto" style="max-width: 560px; margin-top: 64px;">
+    <div class="card-body">
+        <h2 class="page-title">Create shipment</h2>
+
+        @if (Model.ErrorMessage is not null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                @Model.ErrorMessage
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <form asp-action="New" method="post">
+            <div asp-antiforgery="true"></div>
+
+            <div class="mb-3">
+                <label asp-for="TrackingNumber" class="form-label"></label>
+                <input asp-for="TrackingNumber" class="form-control" />
+                <div class="form-text">Leave blank to auto-generate.</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <input asp-for="Description" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Destination" class="form-label"></label>
+                <input asp-for="Destination" class="form-control" />
+                <span asp-validation-for="Destination" class="invalid-feedback">Destination is required.</span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create shipment</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

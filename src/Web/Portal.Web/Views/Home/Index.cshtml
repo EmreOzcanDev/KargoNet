@@ -1,8 +1,18 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "KargoNet";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="card mx-auto text-center" style="max-width: 560px; margin-top: 64px;">
+    <div class="card-body">
+        <h1 class="display-title">Track your shipment</h1>
+        <form asp-controller="Track" asp-action="Index" method="get" class="mt-4">
+            <div class="input-group">
+                <input type="text" name="number" class="form-control" placeholder="Tracking number" />
+                <button type="submit" class="btn btn-primary">Track shipment</button>
+            </div>
+        </form>
+        <p class="text-muted mt-4">
+            <a asp-controller="Shipments" asp-action="New">Create shipment</a>
+        </p>
+    </div>
 </div>
