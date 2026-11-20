@@ -154,7 +154,7 @@ namespace KargoNet.Tracking.Tests.Messaging
             public Task TxRollbackAsync(CancellationToken cancellationToken = default)
                 => throw new NotImplementedException();
 
-            public Task<BasicGetResult> BasicGetAsync(string queue, bool autoAck, CancellationToken cancellationToken = default)
+            public Task<BasicGetResult?> BasicGetAsync(string queue, bool autoAck, CancellationToken cancellationToken = default)
                 => throw new NotImplementedException();
 
             public ValueTask BasicPublishAsync<TProperties>(string exchange, string routingKey, bool mandatory, TProperties? basicProperties, ReadOnlyMemory<byte> body, CancellationToken cancellationToken = default)

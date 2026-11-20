@@ -118,7 +118,7 @@ namespace KargoNet.Tracking.Tests.Dlq
                 return Task.FromResult(new QueueDeclareOk(queue, (uint)PassiveMessageCount, 0));
             }
 
-            public Task<BasicGetResult> BasicGetAsync(string queue, bool autoAck, CancellationToken cancellationToken = default)
+            public Task<BasicGetResult?> BasicGetAsync(string queue, bool autoAck, CancellationToken cancellationToken = default)
             {
                 Assert.Equal(RabbitTopology.Dlq, queue);
                 if (_deliveryIndex >= Deliveries.Count)

@@ -29,7 +29,7 @@ namespace KargoNet.Tracking.Tests.Consuming
             // .NET 10: StartAsync returns once the service has started; the
             // lifetime task is ExecuteTask.
             await consumer.StartAsync(cts.Token);
-            await consumer.ExecuteTask;
+            await consumer.ExecuteTask!;
 
             Assert.True(cts.IsCancellationRequested);
         }

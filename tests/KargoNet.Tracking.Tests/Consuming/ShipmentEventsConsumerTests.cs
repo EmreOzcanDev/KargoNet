@@ -414,7 +414,7 @@ namespace KargoNet.Tracking.Tests.Consuming
                 IReadOnlyBasicProperties? Properties,
                 byte[] Body)
             {
-                public IDictionary<string, object>? Headers => Properties?.Headers;
+                public IDictionary<string, object?>? Headers => Properties?.Headers;
             }
 
             public List<Published> Publishes { get; } = [];
@@ -432,8 +432,8 @@ namespace KargoNet.Tracking.Tests.Consuming
                 return ValueTask.CompletedTask;
             }
 
-            public Task<BasicGetResult> BasicGetAsync(string queue, bool autoAck, CancellationToken cancellationToken = default)
-                => Task.FromException<BasicGetResult>(new NotImplementedException());
+            public Task<BasicGetResult?> BasicGetAsync(string queue, bool autoAck, CancellationToken cancellationToken = default)
+                => Task.FromException<BasicGetResult?>(new NotImplementedException());
 
             public Task<QueueDeclareOk> QueueDeclarePassiveAsync(string queue, CancellationToken cancellationToken = default)
                 => Task.FromException<QueueDeclareOk>(new NotImplementedException());
