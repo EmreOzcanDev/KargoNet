@@ -81,6 +81,21 @@ namespace KargoNet.Tracking.Tests.Messaging
             Assert.False(autoAck);
         }
 
+        [Fact]
+        public async Task ConsumeAsync_sets_prefetch_before_consuming()
+        {
+            var channel = new FakeChannel();
+            var broker = CreateBroker(channel);
+
+            await broker.ConsumeAsync("shipments.main", (_, _, _) => Task.CompletedTask, CancellationToken.None);
+
+            var (size, count, global) = Assert.Single(channel.Qos);
+            Assert.Equal(0u, size);
+            Assert.Equal((ushort)10, count);
+            Assert.False(global);
+            Assert.Equal(["qos", "consume"], channel.Calls);
+        }
+
         private static RabbitConsumerBroker CreateBroker(FakeChannel channel)
             => new(new FakeChannelFactory(channel), NullLogger<RabbitConsumerBroker>.Instance);
 
@@ -125,6 +140,10 @@ namespace KargoNet.Tracking.Tests.Messaging
 
             public List<(string queue, bool autoAck)> Consumes { get; } = [];
 
+            public List<(uint size, ushort count, bool global)> Qos { get; } = [];
+
+            public List<string> Calls { get; } = [];
+
             public ValueTask BasicAckAsync(ulong deliveryTag, bool multiple, CancellationToken cancellationToken = default)
             {
                 Acks.Add((deliveryTag, multiple));
@@ -151,10 +170,11 @@ namespace KargoNet.Tracking.Tests.Messaging
             public Task<string> BasicConsumeAsync(string queue, bool autoAck, string consumerTag, bool noLocal, bool exclusive, IDictionary<string, object?>? arguments, IAsyncBasicConsumer consumer, CancellationToken cancellationToken = default)
             {
                 Consumes.Add((queue, autoAck));
+                Calls.Add("consume");
                 return Task.FromResult(consumerTag);
             }
 
-            // --- members the broker never touches ------------------------------------
+            // --- members the broker does not touch -----------------------------------
 
             public ValueTask BasicRejectAsync(ulong deliveryTag, bool requeue, CancellationToken cancellationToken = default)
                 => throw new NotImplementedException();
@@ -165,7 +185,11 @@ namespace KargoNet.Tracking.Tests.Messaging
                 => throw new NotImplementedException();
 
             public Task BasicQosAsync(uint prefetchSize, ushort prefetchCount, bool global, CancellationToken cancellationToken = default)
-                => throw new NotImplementedException();
+            {
+                Qos.Add((prefetchSize, prefetchCount, global));
+                Calls.Add("qos");
+                return Task.CompletedTask;
+            }
 
             public ValueTask<ulong> GetNextPublishSequenceNumberAsync(CancellationToken cancellationToken = default)
                 => throw new NotImplementedException();

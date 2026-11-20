@@ -74,9 +74,12 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
         var channel = await _channelFactory.GetChannelAsync().ConfigureAwait(false);
         var consumer = new DeliveryConsumer(handler, _logger);
 
+        // Prefetch a bounded batch (D2): with autoAck: false the broker must
+        // not pile unacknowledged deliveries onto this consumer while a slow
+        // apply (EF round-trip) is in flight.
+        await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: 10, global: false, ct).ConfigureAwait(false);
+
         // autoAck: false — a delivery is only acknowledged after the
-        // consumer pipeline completes its apply/retry/DLQ decision
-        // (threat T-04-09); the pipeline always acks itself.
         await channel.BasicConsumeAsync(
             queue,
             autoAck: false,
