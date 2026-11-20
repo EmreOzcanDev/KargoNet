@@ -61,16 +61,16 @@ export class TrackingService {
       }
     );
     this.connection = connection;
-    void connection.start();
+    void connection.start().catch(() => {});
   }
 
   joinGroup(trackingNumber: string): void {
     this.start();
-    void this.connection?.invoke('JoinTrackingGroup', trackingNumber);
+    void this.connection?.invoke('JoinTrackingGroup', trackingNumber).catch(() => {});
   }
 
   leaveGroup(trackingNumber: string): void {
-    void this.connection?.invoke('LeaveTrackingGroup', trackingNumber);
+    void this.connection?.invoke('LeaveTrackingGroup', trackingNumber).catch(() => {});
   }
 
   dispose(): void {
