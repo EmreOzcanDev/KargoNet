@@ -44,7 +44,8 @@ function event(n: string, overrides: Partial<TrackingEvent> = {}): TrackingEvent
     trackingNumber: n,
     eventType: 'shipment.created',
     payloadJson: '{"description":"Box","destination":"Berlin"}',
-    occurredAt: '2026-11-15T09:30:00Z',
+    // No offset: parsed as local time, so the rendered stamp is timezone-independent.
+    occurredAt: '2026-11-15T09:30:00',
     ...overrides
   };
 }
@@ -54,7 +55,7 @@ const statusEvent = (n: string, status: string): TrackingEvent =>
     eventId: 'e2',
     eventType: 'shipment.status.changed',
     payloadJson: JSON.stringify({ status }),
-    occurredAt: '2026-11-16T10:00:00Z'
+    occurredAt: '2026-11-16T10:00:00'
   });
 
 class FakeTrackingService {

@@ -93,7 +93,8 @@ describe('ShipmentsComponent', () => {
           description: undefined,
           destination: 'Istanbul',
           status: 'InTransit',
-          updatedAt: '2026-11-19T08:20:00Z'
+          // No offset: parsed as local time, so the rendered stamp is timezone-independent.
+          updatedAt: '2026-11-19T08:20:00'
         })
       ]);
     fixture.detectChanges();

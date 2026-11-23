@@ -4,6 +4,7 @@ using KargoNet.Shipment.Api.Entities;
 using KargoNet.Shipment.Api.Publishing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace KargoNet.Tracking.Tests.Publishing;
@@ -41,10 +42,17 @@ public class OutboxPublisherServiceTests
 
         var db = new ShipmentDbContext(options);
         var channel = new FakeOutboxChannel(outcome);
-        var service = new OutboxPublisherService(db, new MessagePublisher(channel), NullLogger<OutboxPublisherService>.Instance);
+        var service = new OutboxPublisherService(ScopeFactoryFor(db), new MessagePublisher(channel), NullLogger<OutboxPublisherService>.Instance);
 
         return (db, service, channel);
     }
+
+    /// <summary>A scope factory whose scopes resolve <paramref name="db"/> as the <see cref="ShipmentDbContext"/>.</summary>
+    private static IServiceScopeFactory ScopeFactoryFor(ShipmentDbContext db)
+        => new ServiceCollection()
+            .AddScoped(_ => db)
+            .BuildServiceProvider()
+            .GetRequiredService<IServiceScopeFactory>();
 
     private static OutboxMessage CreateRow(DateTimeOffset createdAt, string? payloadJson = null, OutboxStatus status = OutboxStatus.Pending)
         => new()
@@ -64,7 +72,7 @@ public class OutboxPublisherServiceTests
         db.Set<OutboxMessage>().Add(row);
         await db.SaveChangesAsync();
 
-        var published = await service.PollOnceAsync(CancellationToken.None);
+        var published = await service.PollOnceAsync(db, CancellationToken.None);
 
         Assert.Equal(1, published);
         var call = Assert.Single(channel.Calls);
@@ -85,14 +93,14 @@ public class OutboxPublisherServiceTests
         db.Set<OutboxMessage>().Add(row);
         await db.SaveChangesAsync();
 
-        var firstPoll = await service.PollOnceAsync(CancellationToken.None);
+        var firstPoll = await service.PollOnceAsync(db, CancellationToken.None);
 
         Assert.Equal(0, firstPoll);
         var saved = await db.Set<OutboxMessage>().SingleAsync();
         Assert.Equal(OutboxStatus.Pending, saved.Status);
         Assert.Null(saved.PublishedAt);
 
-        var secondPoll = await service.PollOnceAsync(CancellationToken.None);
+        var secondPoll = await service.PollOnceAsync(db, CancellationToken.None);
 
         Assert.Equal(0, secondPoll);
         Assert.Equal(2, channel.Calls.Count);
@@ -108,7 +116,7 @@ public class OutboxPublisherServiceTests
             status: OutboxStatus.Published));
         await db.SaveChangesAsync();
 
-        var published = await service.PollOnceAsync(CancellationToken.None);
+        var published = await service.PollOnceAsync(db, CancellationToken.None);
 
         Assert.Equal(0, published);
         Assert.Empty(channel.Calls);
@@ -125,7 +133,7 @@ public class OutboxPublisherServiceTests
         db.Set<OutboxMessage>().AddRange(rows);
         await db.SaveChangesAsync();
 
-        var published = await service.PollOnceAsync(CancellationToken.None);
+        var published = await service.PollOnceAsync(db, CancellationToken.None);
 
         Assert.Equal(50, published);
         Assert.Equal(50, channel.Calls.Count);
@@ -165,14 +173,14 @@ public class OutboxPublisherServiceTests
         var channel = new ScriptedOutboxChannel(i => i == 0
             ? new PublishOutcome(false, 7)   // first row's publish is unconfirmed
             : new PublishOutcome(true, 1));
-        var service = new OutboxPublisherService(db, new MessagePublisher(channel), NullLogger<OutboxPublisherService>.Instance);
+        var service = new OutboxPublisherService(ScopeFactoryFor(db), new MessagePublisher(channel), NullLogger<OutboxPublisherService>.Instance);
 
         var baseTime = new DateTimeOffset(2026, 11, 19, 10, 0, 0, TimeSpan.Zero);
         var rows = Enumerable.Range(0, 3).Select(i => CreateRow(baseTime.AddSeconds(i))).ToList();
         db.Set<OutboxMessage>().AddRange(rows);
         await db.SaveChangesAsync();
 
-        var published = await service.PollOnceAsync(CancellationToken.None);
+        var published = await service.PollOnceAsync(db, CancellationToken.None);
 
         // Row 1 stays Pending; rows 2-3 were confirmed AND their Published
         // marks persisted (no ChangeTracker.Clear() detach of the batch).
@@ -213,7 +221,7 @@ public class OutboxPublisherServiceTests
     {
         var db = new FailingShipmentDbContext("outbox-test-loop");
         var service = new OutboxPublisherService(
-            db,
+            ScopeFactoryFor(db),
             new MessagePublisher(new FakeOutboxChannel(new PublishOutcome(true, 1))),
             NullLogger<OutboxPublisherService>.Instance);
 

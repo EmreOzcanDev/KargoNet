@@ -14,11 +14,11 @@ flowchart LR
     Operator -->|"SignalR /hubs/tracking"| TrackApi
     ShipApi --> ShipDb[("Postgres: shipments")]
     ShipApi -->|"outbox publisher"| Exchange{{"kargonet.shipments (topic)"}}
-    Exchange --> MainQ[tracking.shipment-events]
+    Exchange --> MainQ[shipments.main]
     MainQ --> TrackApi
-    TrackApi -->|"fail, attempt below max"| RetryQ["tracking.shipment-events.retry (TTL)"]
+    TrackApi -->|"fail, attempt below max"| RetryQ["shipments.retry (5s TTL)"]
     RetryQ -->|"dead-letter back"| MainQ
-    TrackApi -->|"fail, attempts exhausted"| Dlq[tracking.shipment-events.dlq]
+    TrackApi -->|"fail, attempts exhausted"| Dlq[shipments.dlq]
     TrackApi --> TrackDb[("Postgres: tracking")]
     TrackApi --> Redis[("Redis cache")]
 ```
@@ -26,7 +26,7 @@ flowchart LR
 Key mechanics:
 
 - **Outbox:** a status change and its event row are saved in one EF transaction; a background publisher polls, publishes with confirms, and marks rows sent — events are not lost if RabbitMQ is down.
-- **Retry and DLQ:** on failure the consumer republishes to the retry queue (TTL) with `x-retry-count` incremented; once retries (3) are exhausted the message goes to the DLQ with an `x-exception` header. Either way the original message is acked.
+- **Retry and DLQ:** on failure the consumer republishes to the retry queue (5-second TTL) with `x-retry-count` incremented; once its 2 retries (3 attempts in total) are exhausted the message goes to the DLQ with an `x-exception` header. Either way the original message is acked.
 - **Idempotency:** each event is applied at most once — a `ProcessedEvents` marker is checked by `EventId` inside the same transaction as the read-model update.
 - **Redis cache-aside:** `GET /api/tracking/{number}` serves from `tracking:{number}` (10-minute TTL); the entry is deleted when a new event for that shipment is consumed.
 - **SignalR:** after each processed event, the Tracking API broadcasts `ShipmentUpdated` to all operator clients and to a group named after the tracking number.
@@ -64,7 +64,7 @@ Databases, tables, and RabbitMQ topology are created automatically on first star
 3. **Advance the status:** in the operator screen, change the status (PickedUp → InTransit → …). The call is `PUT /api/shipments/{id}/status` on the shipment API.
 4. **Live update:** the operator row's badge updates in real time over SignalR — no refresh needed.
 5. **Portal timeline:** the portal's tracking view (`/track?number=…`) now shows the updated status plus a timeline entry for each status change.
-6. **DLQ bonus:** publish a poison message to the `tracking.shipment-events` queue (e.g. via the RabbitMQ management UI at <http://localhost:15672>). Watch `x-retry-count` increment as it bounces through the retry queue, then land in `tracking.shipment-events.dlq`. Recover it with:
+6. **DLQ bonus:** publish a poison message to the `shipments.main` queue (e.g. via the RabbitMQ management UI at <http://localhost:15672>). Watch `x-retry-count` increment as it bounces through `shipments.retry`, then land in `shipments.dlq`. Recover it with:
 
    ```bash
    curl -X POST http://localhost:5002/api/admin/dlq/replay
@@ -108,7 +108,7 @@ src/Web/operator-ui                     Angular operator screen + nginx proxy co
 tests/KargoNet.Tracking.Tests           xUnit: retry decisions, idempotency, cache, consumer, API
 tests/KargoNet.Portal.Tests             xUnit: portal controllers
 docker/postgres/init.sql                Creates the shipments and tracking databases
-docker-compose.yml                      The 8-service stack
+docker-compose.yml                      The 7-service stack
 .env                                    Local dev credentials/connection strings (defaults)
 ```
 

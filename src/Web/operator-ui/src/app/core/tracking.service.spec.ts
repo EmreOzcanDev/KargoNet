@@ -1,4 +1,4 @@
-import { HubConnection, HubConnectionState } from '@microsoft/signalr';
+import { HubConnection } from '@microsoft/signalr';
 import { TrackingService, ConnectionState } from './tracking.service';
 import { TrackingUpdatedDto } from './models';
 
@@ -7,15 +7,31 @@ class FakeHubConnection {
   invoked: Array<[string, ...unknown[]]> = [];
   started = 0;
   stopped = 0;
+  startResult: Promise<void> = Promise.resolve();
+  reconnecting: () => void = () => {};
+  reconnected: () => void = () => {};
+  closed: () => void = () => {};
 
   on(event: string, handler: (...args: unknown[]) => void): this {
     this.handlers[event] = handler;
     return this;
   }
 
+  onreconnecting(callback: () => void): void {
+    this.reconnecting = callback;
+  }
+
+  onreconnected(callback: () => void): void {
+    this.reconnected = callback;
+  }
+
+  onclose(callback: () => void): void {
+    this.closed = callback;
+  }
+
   start(): Promise<void> {
     this.started++;
-    return Promise.resolve();
+    return this.startResult;
   }
 
   stop(): Promise<void> {
@@ -70,13 +86,22 @@ describe('TrackingService', () => {
     expect(service.shipmentUpdated.value).toBeNull();
   });
 
-  it('maps hub state changes to connection states', () => {
+  it('reports connected once start succeeds, then follows the lifecycle callbacks', async () => {
     service.start();
-    fake.handlers['stateChanged'](HubConnectionState.Disconnected, HubConnectionState.Connected);
+    await fake.startResult;
     expect(service.connectionState.value).toBe('connected');
-    fake.handlers['stateChanged'](HubConnectionState.Connected, HubConnectionState.Reconnecting);
+    fake.reconnecting();
     expect(service.connectionState.value).toBe('reconnecting');
-    fake.handlers['stateChanged'](HubConnectionState.Reconnecting, HubConnectionState.Disconnected);
+    fake.reconnected();
+    expect(service.connectionState.value).toBe('connected');
+    fake.closed();
+    expect(service.connectionState.value).toBe('disconnected');
+  });
+
+  it('stays disconnected when start fails', async () => {
+    fake.startResult = Promise.reject(new Error('negotiate failed'));
+    service.start();
+    await fake.startResult.catch(() => {});
     expect(service.connectionState.value).toBe('disconnected');
   });
 

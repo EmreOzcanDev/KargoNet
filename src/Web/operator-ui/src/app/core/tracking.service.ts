@@ -1,25 +1,10 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import {
-  HubConnection,
-  HubConnectionBuilder,
-  HubConnectionState
-} from '@microsoft/signalr';
+import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
 import { environment } from '../../environments/environment';
 import { TrackingUpdatedDto } from './models';
 
 export type ConnectionState = 'connected' | 'reconnecting' | 'disconnected';
-
-function mapState(state: HubConnectionState): ConnectionState {
-  switch (state) {
-    case HubConnectionState.Connected:
-      return 'connected';
-    case HubConnectionState.Reconnecting:
-      return 'reconnecting';
-    default:
-      return 'disconnected';
-  }
-}
 
 /**
  * Owns the app's single SignalR connection to the tracking hub (D4).
@@ -37,6 +22,7 @@ export class TrackingService {
   protected createConnection(): HubConnection {
     return new HubConnectionBuilder()
       .withUrl(`${environment.trackingApiUrl}/hubs/tracking`)
+      .withAutomaticReconnect()
       .build();
   }
 
@@ -54,14 +40,14 @@ export class TrackingService {
         this.shipmentUpdated.next(dto);
       }
     });
-    connection.on(
-      'stateChanged',
-      (_previous: HubConnectionState, current: HubConnectionState) => {
-        this.connectionState.next(mapState(current));
-      }
-    );
+    connection.onreconnecting(() => this.connectionState.next('reconnecting'));
+    connection.onreconnected(() => this.connectionState.next('connected'));
+    connection.onclose(() => this.connectionState.next('disconnected'));
     this.connection = connection;
-    void connection.start().catch(() => {});
+    void connection
+      .start()
+      .then(() => this.connectionState.next('connected'))
+      .catch(() => this.connectionState.next('disconnected'));
   }
 
   joinGroup(trackingNumber: string): void {

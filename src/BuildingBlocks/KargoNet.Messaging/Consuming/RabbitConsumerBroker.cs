@@ -16,6 +16,12 @@ namespace KargoNet.Messaging.Consuming;
 /// </summary>
 public sealed class RabbitConsumerBroker : IConsumerBroker
 {
+    // Delivery tags are scoped to the channel that delivered the message, so
+    // an ack must go back on that exact channel. The delivering channel flows
+    // to AckAsync through the handler's async context; a tag acked on any
+    // other channel is rejected by the broker (or acks a different message).
+    private static readonly AsyncLocal<IChannel?> DeliveryChannel = new();
+
     private readonly LazyChannelFactory _channelFactory;
     private readonly ILogger<RabbitConsumerBroker> _logger;
 
@@ -27,17 +33,29 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
 
     public async Task AckAsync(ulong deliveryTag)
     {
-        // Per-operation channel (caller disposes): a shared cached channel
-        // could have been shut down by the broker between deliveries.
-        var channel = await _channelFactory.CreateChannelAsync().ConfigureAwait(false);
-        try
+        var channel = DeliveryChannel.Value;
+        if (channel is not { IsOpen: true })
         {
-            await channel.BasicAckAsync(deliveryTag, multiple: false).ConfigureAwait(false);
+            // The delivering channel is gone: the broker has already requeued
+            // the message and will redeliver it; the idempotent handler skips it.
+            _logger.LogWarning(
+                "Cannot ack delivery {DeliveryTag}: its channel is closed; the broker will redeliver it.",
+                deliveryTag);
+            return;
         }
-        finally
-        {
-            await channel.DisposeAsync();
-        }
+
+        await channel.BasicAckAsync(deliveryTag, multiple: false).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="pipeline"/> as the handling of a delivery that
+    /// arrived on <paramref name="channel"/>: every <see cref="AckAsync"/>
+    /// inside it acks on that channel.
+    /// </summary>
+    public static async Task RunDeliveryAsync(IChannel channel, Func<Task> pipeline)
+    {
+        DeliveryChannel.Value = channel;
+        await pipeline().ConfigureAwait(false);
     }
 
     public async Task PublishAsync(
@@ -72,7 +90,7 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
         CancellationToken ct)
     {
         var channel = await _channelFactory.GetChannelAsync().ConfigureAwait(false);
-        var consumer = new DeliveryConsumer(handler, _logger);
+        var consumer = new DeliveryConsumer(channel, handler, _logger);
 
         // Completed when the broker shuts the channel down — the caller
         // (the consumer's retry loop) must not re-subscribe until then,
@@ -115,15 +133,18 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
 
     private sealed class DeliveryConsumer : IAsyncBasicConsumer
     {
+        private readonly IChannel _channel;
         private readonly Func<ulong, ReadOnlyMemory<byte>, IDictionary<string, object?>?, Task> _handler;
         private readonly ILogger _logger;
 
         public TaskCompletionSource? ChannelShutdown { get; set; }
 
         public DeliveryConsumer(
+            IChannel channel,
             Func<ulong, ReadOnlyMemory<byte>, IDictionary<string, object?>?, Task> handler,
             ILogger logger)
         {
+            _channel = channel;
             _handler = handler;
             _logger = logger;
         }
@@ -146,6 +167,10 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
                     headers[entry.Key] = entry.Value;
             }
 
+            // The client reuses the body buffer once this callback returns,
+            // and the pipeline below outlives it: it must own a copy.
+            var bodyCopy = body.ToArray();
+
             // The broker dispatches synchronously; the pipeline (which
             // always ends in an ack) runs on the pool without blocking the
             // channel's dispatch loop.
@@ -153,7 +178,8 @@ public sealed class RabbitConsumerBroker : IConsumerBroker
             {
                 try
                 {
-                    await _handler(deliveryTag, body, headers).ConfigureAwait(false);
+                    await RunDeliveryAsync(_channel, () => _handler(deliveryTag, bodyCopy, headers))
+                        .ConfigureAwait(false);
                 }
                 catch (Exception exception)
                 {

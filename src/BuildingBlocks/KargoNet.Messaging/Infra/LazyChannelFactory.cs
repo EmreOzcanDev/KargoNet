@@ -18,8 +18,10 @@ public class LazyChannelFactory
 {
     private readonly IConfiguration _configuration;
     private readonly SemaphoreSlim _openLock = new(1, 1);
+    private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly object _gate = new();
     private IChannel? _channel;
+    private IConnection? _connection;
 
     public LazyChannelFactory(IConfiguration configuration)
         => _configuration = configuration;
@@ -66,37 +68,52 @@ public class LazyChannelFactory
         => OpenChannelAsync();
 
     /// <summary>
-    /// Opens a new connection and channel; the channel's broker-side
+    /// Opens a channel on the shared connection; the channel's broker-side
     /// shutdown clears the cache (if it is the cached one).
     /// </summary>
     protected virtual async Task<IChannel> OpenChannelAsync()
     {
-        var connectionString = _configuration.GetConnectionString("RabbitMq") ?? "amqp://localhost";
-        var factory = new ConnectionFactory { Uri = new Uri(connectionString) };
+        var connection = await GetConnectionAsync().ConfigureAwait(false);
+        var channel = await connection.CreateChannelAsync(
+            new CreateChannelOptions(false, false)).ConfigureAwait(false);
+        channel.ChannelShutdownAsync += (_, _) =>
+        {
+            lock (_gate)
+            {
+                if (ReferenceEquals(_channel, channel))
+                    _channel = null;
+            }
 
-        IConnection? connection = null;
+            return Task.CompletedTask;
+        };
+
+        return channel;
+    }
+
+    /// <summary>
+    /// Returns the single process-wide connection, opening it on first use
+    /// and replacing it once closed. Every channel rides this connection, so
+    /// disposing a per-operation channel releases everything it held.
+    /// </summary>
+    private async Task<IConnection> GetConnectionAsync()
+    {
+        await _connectionLock.WaitAsync().ConfigureAwait(false);
         try
         {
-            connection = await factory.CreateConnectionAsync().ConfigureAwait(false);
-            var channel = await connection.CreateChannelAsync(
-                new CreateChannelOptions(false, false)).ConfigureAwait(false);
-            channel.ChannelShutdownAsync += (_, _) =>
-            {
-                lock (_gate)
-                {
-                    _channel = null;
-                }
+            if (_connection is { IsOpen: true } open)
+                return open;
 
-                return Task.CompletedTask;
-            };
+            if (_connection is not null)
+                await _connection.DisposeAsync().ConfigureAwait(false);
 
-            return channel;
+            var connectionString = _configuration.GetConnectionString("RabbitMq") ?? "amqp://localhost";
+            var factory = new ConnectionFactory { Uri = new Uri(connectionString) };
+            _connection = await factory.CreateConnectionAsync().ConfigureAwait(false);
+            return _connection;
         }
-        catch
+        finally
         {
-            if (connection is not null)
-                await connection.DisposeAsync();
-            throw;
+            _connectionLock.Release();
         }
     }
 }

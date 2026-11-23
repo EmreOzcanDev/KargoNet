@@ -26,16 +26,65 @@ namespace KargoNet.Tracking.Tests.Messaging
         }
 
         [Fact]
-        public async Task AckAsync_acks_single_delivery_without_multiple()
+        public async Task AckAsync_acks_on_the_delivering_channel_not_a_fresh_one()
+        {
+            var consumeChannel = new FakeChannel();
+            var perOperationChannel = new FakeChannel();
+            var broker = new RabbitConsumerBroker(
+                new FakeChannelFactory(consumeChannel, perOperationChannel),
+                NullLogger<RabbitConsumerBroker>.Instance);
+            var acked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var consume = broker.ConsumeAsync("shipments.main", async (tag, _, _) =>
+            {
+                await broker.AckAsync(tag);
+                acked.SetResult();
+            }, CancellationToken.None);
+
+            await DeliverAsync(consumeChannel, 5, [1, 2, 3]);
+            await acked.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            consumeChannel.SimulateChannelShutdown();
+            await consume;
+
+            var (tag, multiple) = Assert.Single(consumeChannel.Acks);
+            Assert.Equal(5ul, tag);
+            Assert.False(multiple);
+            Assert.Empty(perOperationChannel.Acks);
+        }
+
+        [Fact]
+        public async Task AckAsync_outside_a_delivery_acks_nothing()
         {
             var channel = new FakeChannel();
             var broker = CreateBroker(channel);
 
             await broker.AckAsync(5);
 
-            var (tag, multiple) = Assert.Single(channel.Acks);
-            Assert.Equal(5ul, tag);
-            Assert.False(multiple);
+            Assert.Empty(channel.Acks);
+        }
+
+        [Fact]
+        public async Task Delivery_handler_sees_the_original_body_after_the_client_reuses_its_buffer()
+        {
+            var channel = new FakeChannel();
+            var broker = CreateBroker(channel);
+            var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var seen = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var consume = broker.ConsumeAsync("shipments.main", async (_, body, _) =>
+            {
+                await gate.Task;
+                seen.SetResult(body.ToArray());
+            }, CancellationToken.None);
+
+            var buffer = new byte[] { 1, 2, 3 };
+            await DeliverAsync(channel, 1, buffer);
+            Array.Clear(buffer);
+            gate.SetResult();
+
+            Assert.Equal([1, 2, 3], await seen.Task.WaitAsync(TimeSpan.FromSeconds(5)));
+            channel.SimulateChannelShutdown();
+            await consume;
         }
 
         [Fact]
@@ -122,16 +171,35 @@ namespace KargoNet.Tracking.Tests.Messaging
         private static RabbitConsumerBroker CreateBroker(FakeChannel channel)
             => new(new FakeChannelFactory(channel), NullLogger<RabbitConsumerBroker>.Instance);
 
-        /// <summary><see cref="LazyChannelFactory"/> wired to a canned channel (no broker).</summary>
+        /// <summary>Waits for the consumer to subscribe, then pushes one delivery through it.</summary>
+        private static async Task DeliverAsync(FakeChannel channel, ulong deliveryTag, byte[] body)
+        {
+            for (var i = 0; channel.Consumer is null && i < 100; i++)
+                await Task.Delay(10);
+
+            await channel.Consumer!.HandleBasicDeliverAsync(
+                "ctag", deliveryTag, false, "kargonet.shipments", "shipment",
+                new BasicProperties(), body, CancellationToken.None);
+        }
+
+        /// <summary>
+        /// <see cref="LazyChannelFactory"/> wired to canned channels (no broker):
+        /// the shared channel for consume, and optionally a distinct one for
+        /// per-operation work.
+        /// </summary>
         private sealed class FakeChannelFactory : LazyChannelFactory
         {
             private readonly IChannel _channel;
+            private readonly IChannel _perOperationChannel;
 
             public int FetchCount { get; private set; }
 
-            public FakeChannelFactory(IChannel channel)
+            public FakeChannelFactory(IChannel channel, IChannel? perOperationChannel = null)
                 : base(new ConfigurationBuilder().Build())
-                => _channel = channel;
+            {
+                _channel = channel;
+                _perOperationChannel = perOperationChannel ?? channel;
+            }
 
             public override Task<IChannel> GetChannelAsync()
             {
@@ -140,7 +208,7 @@ namespace KargoNet.Tracking.Tests.Messaging
             }
 
             public override Task<IChannel> CreateChannelAsync()
-                => Task.FromResult(_channel);
+                => Task.FromResult(_perOperationChannel);
         }
 
         /// <summary>

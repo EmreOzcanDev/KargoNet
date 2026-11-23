@@ -3,6 +3,7 @@ using KargoNet.Messaging.Publishing;
 using KargoNet.Messaging.Topology;
 using KargoNet.Shipment.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -23,16 +24,16 @@ public class OutboxPublisherService : BackgroundService
     private const int BatchSize = 50;
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
 
-    private readonly ShipmentDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly MessagePublisher _publisher;
     private readonly ILogger<OutboxPublisherService> _logger;
 
     public OutboxPublisherService(
-        ShipmentDbContext db,
+        IServiceScopeFactory scopeFactory,
         MessagePublisher publisher,
         ILogger<OutboxPublisherService> logger)
     {
-        _db = db;
+        _scopeFactory = scopeFactory;
         _publisher = publisher;
         _logger = logger;
     }
@@ -41,9 +42,9 @@ public class OutboxPublisherService : BackgroundService
     /// One poll batch: publish up to 50 Pending rows, oldest first. Returns the
     /// number of rows published. Directly drivable — no timer or delay logic.
     /// </summary>
-    public async Task<int> PollOnceAsync(CancellationToken cancellationToken)
+    public async Task<int> PollOnceAsync(ShipmentDbContext db, CancellationToken cancellationToken)
     {
-        var rows = await _db.Set<OutboxMessage>()
+        var rows = await db.Set<OutboxMessage>()
             .Where(o => o.Status == OutboxStatus.Pending)
             .OrderBy(o => o.CreatedAt)
             .Take(BatchSize)
@@ -70,8 +71,8 @@ public class OutboxPublisherService : BackgroundService
 
                 // One row per own short transaction: a single failure cannot
                 // block the rest of the batch.
-                await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
-                await _db.SaveChangesAsync(cancellationToken);
+                await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+                await db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
 
                 published++;
@@ -95,7 +96,11 @@ public class OutboxPublisherService : BackgroundService
         {
             try
             {
-                await PollOnceAsync(stoppingToken);
+                // The DbContext is scoped: a fresh one per poll keeps the
+                // change tracker from growing for the life of the host.
+                using var scope = _scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<ShipmentDbContext>();
+                await PollOnceAsync(db, stoppingToken);
             }
             catch (OperationCanceledException)
             {

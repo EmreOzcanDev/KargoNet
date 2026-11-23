@@ -77,8 +77,21 @@ namespace KargoNet.Tracking.Tests.Consuming
                     NullLogger<ShipmentEventsConsumer>.Instance);
             }
 
+            public Task DeliverAsync(ulong deliveryTag, byte[] body, IDictionary<string, object?>? headers)
+                => ShipmentEventsConsumerTests.DeliverAsync(Consumer, Channel, deliveryTag, body, headers);
+
             public void Dispose() => Db.Dispose();
         }
+
+        /// <summary>Handles one delivery as if it arrived on <paramref name="channel"/> (so its ack lands there).</summary>
+        private static Task DeliverAsync(
+            ShipmentEventsConsumer consumer,
+            FakeChannel channel,
+            ulong deliveryTag,
+            byte[] body,
+            IDictionary<string, object?>? headers)
+            => RabbitConsumerBroker.RunDeliveryAsync(
+                channel, () => consumer.HandleDeliveryAsync(deliveryTag, body, headers));
 
         private static TrackingDbContext CreateContext() => new(CreateOptions());
 
@@ -116,7 +129,7 @@ namespace KargoNet.Tracking.Tests.Consuming
             var eventId = Guid.NewGuid();
             var body = CreatedBody(eventId, "TRK-100");
 
-            await fixture.Consumer.HandleDeliveryAsync(7, body, null);
+            await fixture.DeliverAsync(7, body, null);
 
             var row = await fixture.Db.ShipmentTrackings.SingleAsync(t => t.TrackingNumber == "TRK-100");
             Assert.Equal("Created", row.Status);
@@ -144,8 +157,8 @@ namespace KargoNet.Tracking.Tests.Consuming
             var eventId = Guid.NewGuid();
             var body = CreatedBody(eventId, "TRK-101");
 
-            await fixture.Consumer.HandleDeliveryAsync(1, body, null);
-            await fixture.Consumer.HandleDeliveryAsync(2, body, null);
+            await fixture.DeliverAsync(1, body, null);
+            await fixture.DeliverAsync(2, body, null);
 
             Assert.Equal(1, await fixture.Db.ShipmentTrackings.CountAsync());
             Assert.Equal(1, await fixture.Db.TrackingEvents.CountAsync());
@@ -178,7 +191,7 @@ namespace KargoNet.Tracking.Tests.Consuming
                 NullLogger<ShipmentEventsConsumer>.Instance);
 
             var eventId = Guid.NewGuid();
-            await consumer.HandleDeliveryAsync(9, CreatedBody(eventId, "TRK-200"), null);
+            await DeliverAsync(consumer, channel, 9, CreatedBody(eventId, "TRK-200"), null);
             Assert.Equal([9UL], channel.Acks);
             Assert.Empty(channel.Publishes);
             Assert.True(await db.ProcessedEvents.AnyAsync(e => e.EventId == eventId));
@@ -213,7 +226,7 @@ namespace KargoNet.Tracking.Tests.Consuming
                 handler.ApplyCreatedAsync(eventId, ShipmentEventsConsumer.CreatedEventType, occurredAt, JsonSerializer.Serialize(payload), payload));
 
             // End-to-end: the failure routes to the retry queue and is acked.
-            await consumer.HandleDeliveryAsync(3, CreatedBody(eventId, "TRK-201"), null);
+            await DeliverAsync(consumer, channel, 3, CreatedBody(eventId, "TRK-201"), null);
             var first = Assert.Single(channel.Publishes);
             Assert.Equal(RabbitTopology.RetryRoutingKey, first.RoutingKey);
             Assert.Equal(1, first.Headers!["x-retry-count"]);
@@ -227,8 +240,8 @@ namespace KargoNet.Tracking.Tests.Consuming
             var createdId = Guid.NewGuid();
             var changedId = Guid.NewGuid();
 
-            await fixture.Consumer.HandleDeliveryAsync(1, CreatedBody(createdId, "TRK-102"), null);
-            await fixture.Consumer.HandleDeliveryAsync(2, StatusChangedBody(changedId, "TRK-102", ShipmentStatus.PickedUp), null);
+            await fixture.DeliverAsync(1, CreatedBody(createdId, "TRK-102"), null);
+            await fixture.DeliverAsync(2, StatusChangedBody(changedId, "TRK-102", ShipmentStatus.PickedUp), null);
 
             var row = await fixture.Db.ShipmentTrackings.SingleAsync(t => t.TrackingNumber == "TRK-102");
             Assert.Equal(ShipmentStatus.PickedUp.ToString(), row.Status);
@@ -254,7 +267,7 @@ namespace KargoNet.Tracking.Tests.Consuming
             var body = EventSerializer.Serialize(envelope);
 
             // First failure: no retry header yet -> republish to the retry queue.
-            await fixture.Consumer.HandleDeliveryAsync(1, body, null);
+            await fixture.DeliverAsync(1, body, null);
             var first = Assert.Single(fixture.Channel.Publishes);
             Assert.Equal(RabbitTopology.Exchange, first.Exchange);
             Assert.Equal(RabbitTopology.RetryRoutingKey, first.RoutingKey);
@@ -264,7 +277,7 @@ namespace KargoNet.Tracking.Tests.Consuming
 
             // Exhausted retries (header at the cap) -> dead-letter, still acked.
             var exhausted = new Dictionary<string, object?> { ["x-retry-count"] = RetryPolicy.MaxRetries };
-            await fixture.Consumer.HandleDeliveryAsync(2, body, exhausted);
+            await fixture.DeliverAsync(2, body, exhausted);
             var second = fixture.Channel.Publishes[1];
             Assert.Equal(RabbitTopology.DlqRoutingKey, second.RoutingKey);
             Assert.Equal([1UL, 2UL], fixture.Channel.Acks);
@@ -283,14 +296,14 @@ namespace KargoNet.Tracking.Tests.Consuming
                 JsonSerializer.SerializeToElement("not-a-payload"));
             var body = EventSerializer.Serialize(envelope);
 
-            await fixture.Consumer.HandleDeliveryAsync(1, body, null);
+            await fixture.DeliverAsync(1, body, null);
             var first = Assert.Single(fixture.Channel.Publishes);
             Assert.Equal(RabbitTopology.RetryRoutingKey, first.RoutingKey);
             Assert.Equal(1, first.Headers!["x-retry-count"]);
             Assert.Equal([1UL], fixture.Channel.Acks);
 
             var exhausted = new Dictionary<string, object?> { ["x-retry-count"] = RetryPolicy.MaxRetries };
-            await fixture.Consumer.HandleDeliveryAsync(2, body, exhausted);
+            await fixture.DeliverAsync(2, body, exhausted);
             Assert.Equal(RabbitTopology.DlqRoutingKey, fixture.Channel.Publishes[1].RoutingKey);
             Assert.Equal([1UL, 2UL], fixture.Channel.Acks);
             Assert.Equal(0, await fixture.Db.ShipmentTrackings.CountAsync());
