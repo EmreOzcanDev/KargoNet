@@ -1,8 +1,8 @@
 # KargoNet — Shipment Tracking Microservices
 
-KargoNet is a .NET 10 shipment-tracking system built as microservices: a **Shipment** service and a **Tracking** service that exchange shipment events over **RabbitMQ** with hand-built **retry and dead-letter queues**, **PostgreSQL** for storage, a **Redis** cache for tracking lookups, an **ASP.NET Core MVC** customer portal, and an **Angular** operator screen that receives live updates over **SignalR**. Everything runs as a single Docker Compose stack.
+KargoNet is a shipment-tracking system built on .NET 10 microservices. A **Shipment** service and a **Tracking** service exchange shipment events over **RabbitMQ** with custom **retry and dead-letter queues**, **PostgreSQL** for storage, a **Redis** cache for tracking lookups, an **ASP.NET Core MVC** customer portal, and an **Angular** operator screen that receives live updates over **SignalR**. The complete system runs as a single Docker Compose stack.
 
-The core guarantee: a status change made in the operator UI must reach the customer portal and the operator's live view **without loss**, even when RabbitMQ or an individual consumer is temporarily down.
+The core design goal is that a status change made in the operator UI reaches the customer portal and the operator's live view **without loss**, even when RabbitMQ or an individual consumer is temporarily unavailable.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ flowchart LR
     TrackApi --> Redis[("Redis cache")]
 ```
 
-Key mechanics:
+### Reliability and data flow
 
 - **Outbox:** a status change and its event row are saved in one EF transaction; a background publisher polls, publishes with confirms, and marks rows sent — events are not lost if RabbitMQ is down.
 - **Retry and DLQ:** on failure the consumer republishes to the retry queue (5-second TTL) with `x-retry-count` incremented; once its 2 retries (3 attempts in total) are exhausted the message goes to the DLQ with an `x-exception` header. Either way the original message is acked.
@@ -33,7 +33,7 @@ Key mechanics:
 
 ## Prerequisites
 
-- Docker with Docker Compose (the default stack needs nothing else)
+- Docker with Docker Compose
 
 ## Quick start
 
@@ -41,9 +41,9 @@ Key mechanics:
 docker compose up --build
 ```
 
-All 7 services start with health-gated ordering. When every service reports `healthy`:
+The stack consists of 7 services, started in health-gated order. Once all report `healthy`, they are available as follows:
 
-| Service | Host port | What it is |
+| Service | Host port | Description |
 |---|---|---|
 | portal-web | 5000 | Customer portal (ASP.NET Core MVC) |
 | operator-ui | 4200 | Operator screen (Angular + nginx; proxies `/api` → shipment-api, `/hubs` → tracking-api) |
@@ -53,35 +53,30 @@ All 7 services start with health-gated ordering. When every service reports `hea
 | rabbitmq | 5672 / 15672 | Broker / management UI |
 | redis | 6379 | Tracking cache |
 
-Teardown when you're done: `docker compose down` (add `-v` to also drop the Postgres volumes; the databases are re-created on the next first-time start).
+To stop the stack, run `docker compose down`. Adding `-v` also removes the Postgres volumes; the databases are re-created on the next start.
 
-Databases, tables, and RabbitMQ topology are created automatically on first start (init script + in-process EF migrations at API startup) — no manual setup.
+Databases, tables, and RabbitMQ topology are created automatically on first start through an init script and in-process EF migrations at API startup.
 
 ## Demo walkthrough
 
-1. **Create a shipment in the portal:** open <http://localhost:5000>, use the create-shipment form (tracking number, description, destination). The portal POSTs to the shipment API → `201 Created`.
-2. **Watch it in the operator screen:** open <http://localhost:4200>. The new shipment appears in the table, live badge included.
-3. **Advance the status:** in the operator screen, change the status (PickedUp → InTransit → …). The call is `PUT /api/shipments/{id}/status` on the shipment API.
-4. **Live update:** the operator row's badge updates in real time over SignalR — no refresh needed.
-5. **Portal timeline:** the portal's tracking view (`/track?number=…`) now shows the updated status plus a timeline entry for each status change.
-6. **DLQ bonus:** publish a poison message to the `shipments.main` queue (e.g. via the RabbitMQ management UI at <http://localhost:15672>). Watch `x-retry-count` increment as it bounces through `shipments.retry`, then land in `shipments.dlq`. Recover it with:
+1. **Create a shipment.** Open the customer portal at <http://localhost:5000> and submit the create-shipment form (tracking number, description, destination). The portal sends a POST request to the Shipment API, which returns `201 Created`.
+2. **View it in the operator screen.** Open <http://localhost:4200>. The new shipment appears in the table with a live badge.
+3. **Advance the status.** Change the status in the operator screen (PickedUp → InTransit → …). This calls `PUT /api/shipments/{id}/status` on the Shipment API.
+4. **Observe the live update.** The status badge updates in real time over SignalR, without a page refresh.
+5. **Check the portal timeline.** The tracking view (`/track?number=…`) shows the current status and a timeline entry for each status change.
+6. **Exercise the dead-letter queue.** Publish a poison message to the `shipments.main` queue, for example through the RabbitMQ management UI at <http://localhost:15672>. `x-retry-count` increments as the message cycles through `shipments.retry`, after which it lands in `shipments.dlq`. Replay it with:
 
    ```bash
    curl -X POST http://localhost:5002/api/admin/dlq/replay
    ```
 
-   and confirm it is reprocessed (the DLQ count drops).
+   The DLQ count drops as the message is reprocessed.
 
 ## Development mode
 
-**Docker Compose is the supported development flow** — it is the only place the
-apps' connection strings are wired up (the root `.env` is consumed by Compose;
-ASP.NET Core does not load it, and the `appsettings*.json` files carry no
-connection strings).
+Docker Compose is the supported development flow and the only place where connection strings are preconfigured. The root `.env` file is consumed by Compose; ASP.NET Core does not load it, and the `appsettings*.json` files contain no connection strings.
 
-If you run pieces on the host instead, bring up local Postgres (databases
-`shipments` and `tracking`), RabbitMQ, and Redis, then supply the connection
-strings yourself as environment variables before `dotnet run`:
+Running services directly on the host requires local instances of PostgreSQL (databases `shipments` and `tracking`), RabbitMQ, and Redis. Set the following environment variables before `dotnet run`:
 
 | Variable | Used by | Example (localhost) |
 |---|---|---|
@@ -90,11 +85,11 @@ strings yourself as environment variables before `dotnet run`:
 | `ConnectionStrings__Redis` | Tracking API | `localhost:6379` |
 | `ConnectionStrings__RabbitMq` | both APIs | `amqp://…@localhost:5672/` |
 
-Then:
+Start each component:
 
 - **APIs:** `dotnet run` in `src/Services/Shipment.Api` (port 5001) and `src/Services/Tracking.Api` (port 5002). Migrations run in-process at startup.
 - **Portal:** `dotnet run` in `src/Web/Portal.Web` (port 5000).
-- **Operator UI:** `npm install && npm run start` in `src/Web/operator-ui` (`ng serve`, port 4200). The dev `environment.ts` points at absolute `localhost:5001`/`localhost:5002` bases.
+- **Operator UI:** `npm install && npm run start` in `src/Web/operator-ui` (`ng serve`, port 4200). The development `environment.ts` uses absolute `localhost:5001`/`localhost:5002` bases.
 
 ## Project layout
 
@@ -109,7 +104,7 @@ tests/KargoNet.Tracking.Tests           xUnit: retry decisions, idempotency, cac
 tests/KargoNet.Portal.Tests             xUnit: portal controllers
 docker/postgres/init.sql                Creates the shipments and tracking databases
 docker-compose.yml                      The 7-service stack
-.env                                    Local dev credentials/connection strings (defaults)
+.env                                    Default credentials and connection strings for local development
 ```
 
 ## Tests
